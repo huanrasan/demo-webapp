@@ -43,7 +43,7 @@ test antes o junto al comportamiento. Paralelizables: 3 con 4; 7 con 8 y 9 (tras
 | # | Task | Done when (command or check) | Depends on | Status |
 |---|---|---|---|---|
 | 1 | Estructura inicial: Next.js 16 + TypeScript estricto + pnpm + Node 24 (`.nvmrc`, `engines`), ESLint (reglas T-7 con fixture), Prettier, Vitest (unit e integración separados), Playwright, alias `@/domain` `@/server` `@/app` `@/components` `@/worker`, `.gitignore` | `pnpm install --frozen-lockfile && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build` y `python3 .harness/sdlc.pyz arch` en verde | - | done |
-| 2 | Hooks de git: `python3 .harness/sdlc.pyz hooks` + gitleaks en pre-commit | `git commit` con un secreto de prueba en un archivo temporal es rechazado (se descarta sin commit) | 1 | todo |
+| 2 | Hooks de git: `core.hooksPath` ya apunta a `.harness/hooks`; añadir gitleaks (`--staged --redact`) al pre-commit | `git commit` con un secreto de prueba en un archivo temporal es rechazado (se descarta sin commit) | 1 | done |
 | 3 | `src/domain/time.ts` (UTC ↔ `BUSINESS_TIMEZONE`, formato `es-CO`) test-first | `pnpm test -- src/domain/time.test.ts` | 1 | todo |
 | 4 | `src/server/config.ts` y `.env.example` con zod: variables de `design.md`, validación IANA, longitud de secreto, contraste de `BRAND_PRIMARY_COLOR`; salida con código 1 sin imprimir valores | `pnpm test -- src/server/config.test.ts` | 1 | todo |
 | 5 | `src/server/logger.ts` (pino) con lista de campos permitidos, redacción y `requestId` | `pnpm test -- src/server/logger.test.ts` | 4 | todo |

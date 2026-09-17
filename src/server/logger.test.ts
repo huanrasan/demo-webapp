@@ -43,6 +43,19 @@ describe("logger", () => {
     }
   });
 
+  it("incluye el digest que la pantalla de error muestra como código de referencia", () => {
+    const { lines, logger } = capture();
+
+    logServerError(logger, {
+      requestId: "req-456",
+      digest: "3412098765",
+      request: { method: "GET", url: "/", headers: new Headers() },
+      error: new Error("fallo"),
+    });
+
+    expect(JSON.parse(lines[0])).toMatchObject({ requestId: "req-456", digest: "3412098765" });
+  });
+
   it("redacta campos sensibles registrados directamente", () => {
     const { lines, logger } = capture();
 

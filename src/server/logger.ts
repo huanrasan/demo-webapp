@@ -29,13 +29,19 @@ type RequestLike = { method: string; url: string; headers: Headers };
 
 export function logServerError(
   logger: Logger,
-  { requestId, request, error }: { requestId: string; request: RequestLike; error: unknown },
+  {
+    requestId,
+    digest,
+    request,
+    error,
+  }: { requestId: string; digest?: string; request: RequestLike; error: unknown },
 ) {
   const err = error instanceof Error ? error : new Error(String(error));
   logger.error(
     {
       event: "server_error",
       requestId,
+      digest,
       method: request.method,
       route: new URL(request.url, "http://localhost").pathname,
       status: 500,

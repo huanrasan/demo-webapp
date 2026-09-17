@@ -21,7 +21,7 @@
 | T-4 | Feature de registro: test estático `requireStaff()` en `src/app/(staff)/**` + e2e de rutas del panel | unit + e2e (feature) |
 | T-5 | Feature de reserva: tests IDOR de lectura, cancelación y modificación | integration (feature) |
 | T-6 | Feature de registro: e2e de enrolamiento TOTP/passkey, bloqueo tras 5 fallos, revocación de sesiones | e2e (feature) |
-| T-7 | Este cambio: `eslint.config.mjs` prohíbe `dangerouslySetInnerHTML` y `$queryRawUnsafe` (`pnpm lint` en CI con fixture que debe fallar: `tests/lint/forbidden.fixture.tsx`); CSP en `security-headers.spec.ts` | static + e2e |
+| T-7 | Este cambio: `eslint.config.mjs` prohíbe `dangerouslySetInnerHTML` y `$queryRawUnsafe` (`tests/lint/forbidden-patterns.test.ts` sobre el fixture `tests/lint/fixtures/forbidden.fixture.tsx`); CSP en `security-headers.spec.ts` | static + e2e |
 | T-8 | Este cambio: HSTS en `security-headers.spec.ts`; atributos de cookie en la feature de registro; política TLS del ALB con Checkov en release | e2e + IaC scan |
 | T-9 | Feature de reserva: test concurrente de dos reservas al mismo recurso y hora | integration (feature) |
 | T-10 | Feature de recordatorios: test de plantillas sin nombre de servicio ni recurso | unit (feature) |
@@ -42,10 +42,10 @@ test antes o junto al comportamiento. Paralelizables: 3 con 4; 7 con 8 y 9 (tras
 
 | # | Task | Done when (command or check) | Depends on | Status |
 |---|---|---|---|---|
-| 1 | Estructura inicial: Next.js 16 + TypeScript estricto + pnpm + Node 24 (`.nvmrc`, `engines`), ESLint (reglas T-7 con fixture), Prettier, Vitest (unit e integración separados), Playwright, alias `@/domain` `@/server` `@/app` `@/components` `@/worker`, `.gitignore`, `.env.example` | `pnpm install --frozen-lockfile && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build` y `python3 .harness/sdlc.pyz arch` en verde | - | todo |
+| 1 | Estructura inicial: Next.js 16 + TypeScript estricto + pnpm + Node 24 (`.nvmrc`, `engines`), ESLint (reglas T-7 con fixture), Prettier, Vitest (unit e integración separados), Playwright, alias `@/domain` `@/server` `@/app` `@/components` `@/worker`, `.gitignore` | `pnpm install --frozen-lockfile && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build` y `python3 .harness/sdlc.pyz arch` en verde | - | done |
 | 2 | Hooks de git: `python3 .harness/sdlc.pyz hooks` + gitleaks en pre-commit | `git commit` con un secreto de prueba en un archivo temporal es rechazado (se descarta sin commit) | 1 | todo |
 | 3 | `src/domain/time.ts` (UTC ↔ `BUSINESS_TIMEZONE`, formato `es-CO`) test-first | `pnpm test -- src/domain/time.test.ts` | 1 | todo |
-| 4 | `src/server/config.ts` con zod: variables de `design.md`, validación IANA, longitud de secreto, contraste de `BRAND_PRIMARY_COLOR`; salida con código 1 sin imprimir valores | `pnpm test -- src/server/config.test.ts` | 1 | todo |
+| 4 | `src/server/config.ts` y `.env.example` con zod: variables de `design.md`, validación IANA, longitud de secreto, contraste de `BRAND_PRIMARY_COLOR`; salida con código 1 sin imprimir valores | `pnpm test -- src/server/config.test.ts` | 1 | todo |
 | 5 | `src/server/logger.ts` (pino) con lista de campos permitidos, redacción y `requestId` | `pnpm test -- src/server/logger.test.ts` | 4 | todo |
 | 6 | `docker-compose.yml` (postgres:17 con script de usuarios `app`/`migrator`, Mailpit); Prisma 7 (`prisma.config.ts`, `@prisma/adapter-pg`), migración inicial vacía, scripts `db:migrate` y `db:dev` | `docker compose up -d db && pnpm db:migrate && pnpm db:migrate && pnpm prisma migrate status` sin pendientes | 4 | todo |
 | 7 | `GET /api/health` con `SELECT 1` y timeout 300 ms, `Cache-Control: no-store`; tests de integración con PostgreSQL real y con base inaccesible | `docker compose up -d db && pnpm test:integration -- tests/integration/health.test.ts` | 5, 6 | todo |
@@ -81,3 +81,5 @@ test antes o junto al comportamiento. Paralelizables: 3 con 4; 7 con 8 y 9 (tras
 | Date | Change to plan | Reason |
 |---|---|---|
 | 2026-09-17 | Un solo PR desde `feat/booking-platform-foundation` con un commit pequeño por tarea, en lugar de un PR por tarea | Decisión de huanrasan: un único mantenedor; la revisión se hace por commit |
+| 2026-09-17 | `.env.example` pasa de la tarea 1 a la 4; el alias único `@/*` cubre `@/domain`, `@/server`, `@/app`, `@/components` y `@/worker` | Las variables se definen junto con su validación; un solo alias evita duplicar rutas en `tsconfig` y Vitest |
+| 2026-09-17 | Tarea 1 añade al `AGENTS.md` el bloque `nextjs-agent-rules` | `next dev` lo reinserta si falta; tenerlo commiteado mantiene el árbol limpio |

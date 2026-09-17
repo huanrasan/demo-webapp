@@ -24,7 +24,7 @@ del panel.
 | 404 `not-found.tsx` | n/a | n/a | n/a | "No encontramos esta página" + enlace "Volver al inicio" | Idem |
 | Error global `error.tsx` / `global-error.tsx` | n/a | n/a | "Algo salió mal. Intenta de nuevo." + botón "Reintentar" + "Código de referencia: <requestId>" | n/a | Idem |
 | Carga (por segmento, en features) | n/a | Indicador con `role="status"` y texto oculto "Cargando…"; respeta `prefers-reduced-motion`. No se añade en la raíz: forzaría HTTP 200 en errores y 404 | n/a | n/a | Idem |
-| Componentes base: `Button`, `Link`, `Skeleton` (los de formulario llegan con la feature que los use) | n/a | `Button` con estado `aria-busy` | `FormMessage` asociado con `aria-describedby`; `Alert` con `role="alert"` | Estados de foco visibles | shadcn/ui (Radix UI) sobre Tailwind CSS 4 |
+| Componentes base: `Button` y enlaces (`next/link` con `buttonVariants`); los de formulario, aviso y carga llegan con la feature que los use | n/a | `Button` con estado `aria-busy` | La pantalla de error usa `role="alert"`; los mensajes de campo (`aria-describedby`, `aria-invalid`) llegan con el primer formulario | Estados de foco visibles | shadcn/ui (Radix UI) sobre Tailwind CSS 4 |
 
 **Design system:** shadcn/ui (componentes copiados al repo, basados en Radix UI, accesibles por defecto) y Tailwind
 CSS 4. Motivo: sin dependencia de runtime de un kit cerrado, componentes accesibles probados y personalizables por
@@ -39,7 +39,7 @@ contra blanco al arrancar (si no cumple, la app no arranca y lo informa); neutro
 - [x] Keyboard operable, visible focus, logical order: enlace "Saltar al contenido"; anillo de foco de 2 px con contraste ≥ 3:1 (2.4.7, 2.4.11); orden de DOM igual al visual; componentes Radix con manejo de teclado
 - [x] Contrast ratios and non-color cues: texto ≥ 4,5:1, elementos de interfaz ≥ 3:1; color primario validado al arrancar; errores con icono y texto, no solo color
 - [x] Labels, names and roles for assistive technologies: `lang="es"`; landmarks `header`/`main`/`footer`; `Label` obligatorio en `Input`; botones con nombre accesible
-- [x] Error identification and recovery: `FormMessage` vinculado por `aria-describedby`, `aria-invalid`; página de error con acción "Reintentar"
+- [x] Error identification and recovery: página de error con `role="alert"` y acción "Reintentar"; la identificación de errores por campo (`aria-describedby`, `aria-invalid`) se verifica con el primer formulario
 - [x] Responsive / zoom to 200% without loss: layout fluido desde 320 px (1.4.10 Reflow); objetivos táctiles ≥ 24 × 24 px (2.5.8)
 - [x] Motion and timing respect user preferences: animaciones desactivadas con `prefers-reduced-motion`; sin límites de tiempo en estas pantallas (la expiración del enlace mágico se diseña en la feature de registro)
 

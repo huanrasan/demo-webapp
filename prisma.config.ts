@@ -5,7 +5,8 @@ import { defineConfig } from "prisma/config";
 if (existsSync(".env")) process.loadEnvFile(".env");
 
 const url = process.env.MIGRATION_DATABASE_URL;
-if (!url && process.argv.some((arg) => arg.includes("migrate") || arg.includes("db"))) {
+const command = process.argv.slice(2);
+if (!url && command.some((arg) => arg === "migrate" || arg === "db")) {
   console.error("Configuración inválida o incompleta en: MIGRATION_DATABASE_URL");
   process.exit(1);
 }

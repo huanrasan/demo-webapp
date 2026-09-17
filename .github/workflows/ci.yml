@@ -39,6 +39,20 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Valores de prueba declarados aquí y no leídos de .env.ci: un PR no debe poder inyectar variables ni ejecutar
+    # comandos en el job editando un archivo del repositorio. .env.ci se usa solo con docker --env-file (no evalúa).
+    env:
+      DATABASE_URL: postgresql://app:app-local@localhost:5432/booking
+      MIGRATION_DATABASE_URL: postgresql://migrator:migrator-local@localhost:5432/booking
+      BETTER_AUTH_SECRET: ci-only-value-not-a-real-secret-0000
+      BETTER_AUTH_URL: http://localhost:3000
+      BUSINESS_NAME: Demo
+      BUSINESS_TIMEZONE: America/Bogota
+      BRAND_PRIMARY_COLOR: "#1d4ed8"
+      EMAIL_TRANSPORT: smtp
+      EMAIL_FROM: reservas@example.com
+      SMTP_URL: smtp://localhost:1025
+      LOG_LEVEL: info
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,25 +65,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: PostgreSQL and Mailpit
         run: docker compose up -d --wait db mail
-      # .env.ci se carga dentro de cada step (nunca en $GITHUB_ENV): un PR no debe poder inyectar
-      # variables en el entorno del job editando ese archivo.
       - name: Migrations apply and are idempotent (AC-2)
         run: |
-          set -a; . ./.env.ci; set +a
           pnpm db:migrate
           pnpm db:migrate
           pnpm db:status
-      - name: Integration tests
-        run: |
-          set -a; . ./.env.ci; set +a
-          pnpm test:integration
+      - run: pnpm test:integration
       - name: Build (AC-1)
         run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - name: End-to-end tests
-        run: |
-          set -a; . ./.env.ci; set +a
-          pnpm test:e2e
+      - run: pnpm test:e2e
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
@@ -96,6 +101,15 @@ jobs:
           for _ in $(seq 1 30); do curl -fsS http://localhost:3000/api/health && break; sleep 1; done
           curl -fsS http://localhost:3000/api/health
           test "$(docker exec web id -u)" != "0"
+      - name: Security headers and status codes on the production image (AC-6)
+        run: |
+          headers=$(curl -fsS -D- -o /dev/null -H 'purpose: prefetch' http://localhost:3000/)
+          grep -qi "content-security-policy:.*frame-ancestors 'none'" <<<"$headers"
+          grep -qi "x-content-type-options: nosniff" <<<"$headers"
+          grep -qi "strict-transport-security:" <<<"$headers"
+          grep -qiv "x-powered-by" <<<"$headers"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/no-existe)" = "404"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/e2e/error)" = "404"
       - name: Image vulnerabilities (Trivy, fail on high)
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \

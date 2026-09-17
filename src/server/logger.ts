@@ -22,7 +22,7 @@ export function createLogger(options: { level: string; destination?: Destination
       timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
       formatters: { level: (label) => ({ level: label }) },
       redact: {
-        // pino no soporta profundidad ilimitada: se cubren los tres primeros niveles.
+        // pino no soporta profundidad ilimitada: se cubren los cuatro primeros niveles.
         paths: SENSITIVE_KEYS.flatMap((key) => [key, `*.${key}`, `*.*.${key}`, `*.*.*.${key}`]),
         censor: "[redactado]",
       },

@@ -1,0 +1,9 @@
+// Modelos: se añaden en cada cambio feature (modelo conceptual en ADR-0003).
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

@@ -1,3 +1,7 @@
+# threat-model T-15: solo paquetes revisados pueden ejecutar scripts de instalación.
 allowBuilds:
+  "@prisma/engines": true
+  esbuild: false
+  prisma: true
   sharp: false
   unrs-resolver: false

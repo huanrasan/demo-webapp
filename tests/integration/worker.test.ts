@@ -40,6 +40,8 @@ describe("worker", () => {
     const schedules = await worker.boss.getSchedules(HEARTBEAT_QUEUE);
     expect(schedules.map((s) => s.cron)).toEqual(["* * * * *"]);
 
+    // El cron acumula trabajos mientras no corre ningún worker; sin vaciarlos el test esperaría a que drene la cola.
+    await worker.boss.deleteQueuedJobs(HEARTBEAT_QUEUE);
     await worker.boss.send(HEARTBEAT_QUEUE);
     await waitFor(() => events.includes("worker_heartbeat"), 10_000);
   });

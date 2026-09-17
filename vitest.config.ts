@@ -21,6 +21,8 @@ export default defineConfig({
           include: ["tests/integration/**/*.test.ts"],
           environment: "node",
           fileParallelism: false,
+          // Arrancar pg-boss, migrar su esquema y esperar el primer trabajo supera el límite de 5 s por defecto.
+          testTimeout: 30_000,
         },
       },
     ],

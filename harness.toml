@@ -24,13 +24,14 @@ templates = "docs/sdlc/templates"
 
 [verification]
 # Globs of test sources. When set, test names cited in verification.md (in `backticks`) must exist there.
-test_paths = []
+test_paths = ["src/**/*.test.ts", "tests/**/*.test.ts", "tests/**/*.spec.ts"]
 
 [tdd]
 # Globs (fnmatch). Empty test_globs uses common conventions for Python, JS/TS, Go, JVM, .NET and Ruby.
 # Empty source_globs treats any file with a code extension outside docs/ and harness folders as source.
-test_globs = []
-source_globs = []
+test_globs = ["src/**/*.test.ts", "tests/**/*.test.ts", "tests/**/*.spec.ts", "tests/lint/fixtures/*"]
+# El cliente Prisma (src/generated) se genera; no es código fuente escrito a mano.
+source_globs = ["src/*.ts", "src/**/*.ts", "src/**/*.tsx", "scripts/*.mjs", "prisma/*.prisma", "prisma/**/*.sql", "Dockerfile", "docker-compose.yml", "*.config.ts", "*.config.mjs"]
 
 [contracts]
 # OpenAPI 3.x / AsyncAPI 2.x-3.x documents (YAML or JSON). Breaking changes require a major info.version bump.

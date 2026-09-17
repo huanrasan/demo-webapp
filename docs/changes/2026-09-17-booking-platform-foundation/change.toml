@@ -1,0 +1,13 @@
+id = "2026-09-17-booking-platform-foundation"
+type = "architecture"
+risk = "high"
+phase = "plan"
+scopes = ["ui", "data", "personal-data", "infra"]
+ai_assisted = true
+adrs = [
+  "docs/adr/0001-monolito-nextjs-single-tenant-por-capas.md",
+  "docs/adr/0002-better-auth-enlace-magico-y-segundo-factor-staff.md",
+  "docs/adr/0003-postgresql-prisma-single-tenant.md",
+  "docs/adr/0004-email-ses-y-tareas-con-pg-boss.md",
+  "docs/adr/0005-despliegue-aws-ecs-fargate.md",
+]

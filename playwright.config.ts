@@ -1,4 +1,8 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+
+// La app valida su configuración al arrancar; en CI las variables vienen del entorno.
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 const port = Number(process.env.PORT ?? 3000);
 

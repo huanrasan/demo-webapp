@@ -6,6 +6,8 @@ import { es } from "./_content/es";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
+  // La configuración existe solo en tiempo de ejecución; el build no la lee.
+  await connection();
   return { title: loadConfig().BUSINESS_NAME };
 }
 

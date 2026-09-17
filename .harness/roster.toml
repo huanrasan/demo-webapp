@@ -1,0 +1,65 @@
+# Roles, authority and ownership. Humans edit this file; changes to it require platform/security review.
+# Members are platform usernames ("alice") or platform teams/groups ("@my-org/security").
+
+[settings]
+platform = "github"            # github | gitlab
+separation_of_duties = false   # single-maintainer trial: the same person authors and approves
+
+[roles.product-owner]
+members = ["huanrasan"]
+[roles.tech-lead]
+members = ["huanrasan"]
+[roles.architect]
+members = ["huanrasan"]
+[roles.security]
+members = ["huanrasan"]
+[roles.release-manager]
+members = ["huanrasan"]
+[roles.sre]
+members = ["huanrasan"]
+[roles.platform]
+members = ["huanrasan"]
+[roles.ux-lead]
+members = ["huanrasan"]
+[roles.data-steward]
+members = ["huanrasan"]
+[roles.finops]
+members = ["huanrasan"]
+
+# Artifact -> roles allowed to approve it (any one of them). `adr` covers every file in docs/adr/.
+# Which artifacts actually need approval is decided by `approve = true` in the active profile.
+[authority]
+"spec.md" = ["product-owner", "tech-lead"]
+"design.md" = ["tech-lead", "architect"]
+"adr" = ["architect"]
+"threat-model.md" = ["security"]
+"plan.md" = ["tech-lead"]
+"verification.md" = ["tech-lead"]
+"review.md" = ["tech-lead"]
+"release.md" = ["release-manager"]
+"runbook.md" = ["sre"]
+"discovery.md" = ["product-owner"]
+"ux.md" = ["ux-lead", "product-owner"]
+"data.md" = ["data-steward", "security"]
+"cost.md" = ["finops", "tech-lead"]
+"ai-risk.md" = ["security", "architect"]
+"retirement.md" = ["architect", "tech-lead"]
+"outcome.md" = ["product-owner"]
+# Deviations from organization policy (.harness/deviations.toml) must name an approver holding one of these roles.
+"deviation" = ["architect", "security"]
+# Sensor exceptions (.harness/exceptions.toml) must name an approver holding one of these roles.
+"exception" = ["security"]
+
+# Extra CODEOWNERS entries (path pattern -> roles), emitted before the authority-derived ones.
+[codeowners]
+"*" = ["tech-lead"]
+"/harness.toml" = ["platform", "security"]
+"/.harness/" = ["platform", "security"]
+"/.harness/exceptions.toml" = ["security"]
+"/.harness/architecture.toml" = ["architect"]
+"/.harness/deviations.toml" = ["architect", "security"]
+"/.harness/org/" = ["platform", "security"]
+"/docs/memory/" = ["tech-lead"]
+"/.agents/" = ["platform"]
+"/.github/workflows/" = ["platform", "security"]
+"/.gitlab-ci.sdlc.yml" = ["platform", "security"]

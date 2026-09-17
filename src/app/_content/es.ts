@@ -18,5 +18,4 @@ export const es = {
     retry: "Intentar de nuevo",
     reference: (code: string) => `Código de referencia: ${code}`,
   },
-  loading: "Cargando…",
 } as const;

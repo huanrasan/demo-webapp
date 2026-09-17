@@ -10,9 +10,12 @@ $ pnpm format:check              # All matched files use Prettier code style!
 $ pnpm typecheck                 # tsc --noEmit -> sin errores
 $ pnpm test                      # Test Files 7 passed (7) | Tests 21 passed (21)
 $ pnpm build:e2e                 # build con la ruta de prueba (E2E_ROUTES=1); pnpm build no la incluye
-$ pnpm test:integration          # Test Files 3 passed (3) | Tests 7 passed (7)   (3 ejecuciones seguidas, sin fallos)
+$ pnpm test:integration          # Test Files 3 passed (3) | Tests 8 passed (8)   (repetido sin fallos)
 $ pnpm build                     # next build OK + node scripts/build-worker.mjs -> dist/worker.mjs
 $ pnpm test:e2e                  # 9 passed, chromium (incluye prefetch, X-Powered-By y códigos de estado)
+
+Imagen de producción (no el build de e2e): CSP con 'purpose: prefetch', nosniff y HSTS presentes,
+sin X-Powered-By, /no-existe -> 404 y /e2e/error -> 404 (la ruta de prueba no existe en la imagen).
 $ python3 .harness/sdlc.pyz check   # OK: 0 error(s), 0 warning(s)
 $ python3 .harness/sdlc.pyz arch    # OK: 0 error(s), 0 warning(s)
 $ python3 .harness/sdlc.pyz tdd --base main   # OK: 0 error(s), 0 warning(s)
@@ -67,7 +70,7 @@ CI (PR #2): quality pass, integration pass, container pass, sensors pass, workfl
 | high: los headers de seguridad se evitaban con la cabecera `purpose: prefetch` (src/proxy.ts) | fixed | El matcher ya no excluye peticiones por cabecera; e2e `una cabecera de prefetch no evita los headers de seguridad`; comprobado con curl en el servidor construido |
 | high: errores del servidor y 404 respondían HTTP 200 por el `loading.tsx` de la raíz | fixed | Eliminado el Suspense de la raíz: /no-existe devuelve 404 y /e2e/error devuelve 500; e2e afirma `response.status()` |
 | medium: `/api/health` pasaba a 503 sin log ni métrica | fixed | `health_degraded` con `reason` (timeout o error) y `errorName`; test `registra el motivo de la degradación sin exponerlo en la respuesta` |
-| medium: ci.yml volcaba .env.ci en `$GITHUB_ENV` (inyección desde un PR) | fixed | Cada step carga el archivo en su propia shell; actionlint en verde |
+| medium: ci.yml volcaba .env.ci en `$GITHUB_ENV` (inyección desde un PR) | fixed en la segunda iteración | La primera corrección (`set -a; . ./.env.ci`) era peor: sourcing ejecuta el archivo. Ahora las variables se declaran en el bloque `env:` del job y `.env.ci` solo se usa con `docker --env-file`, que no evalúa |
 | medium: la ruta de prueba se compilaba en la imagen de producción con un flag sin validar | fixed | La página es `page.e2e.tsx` y solo entra con `E2E_ROUTES=1`; `pnpm build` produce únicamente /, /_not-found y /api/health |
 | medium: AC-9 no se cumple del todo porque la protección exime a administradores | accepted (pendiente) | Decisión de huanrasan para no bloquearse mientras el flujo de PR por bot no existe; se activará junto con ese flujo |
 | low: `X-Powered-By: Next.js` | fixed | `poweredByHeader: false`; e2e `no expone el framework en los headers` |
@@ -79,6 +82,19 @@ CI (PR #2): quality pass, integration pass, container pass, sensors pass, workfl
 | low: `MIGRATION_DATABASE_URL` sin validar | fixed | `prisma.config.ts` falla con el mismo formato de mensaje que AC-5 cuando falta en comandos de migración |
 | low: plan.md y design.md nombraban osv-scanner en vez de Trivy fs | fixed | Corregido en ambos documentos |
 | low: los dos tests del worker compartían cola | fixed | El primero detiene su worker antes de que el segundo lance el proceso hijo |
+
+## Segunda pasada de la revisión independiente
+Resultado sobre los 15 hallazgos anteriores: 12 resueltos y verificados por el revisor reconstruyendo la imagen,
+2 aceptados (`enforce_admins=false` y el `apt-get upgrade` del Dockerfile) y 1 no resuelto, corregido después.
+
+| Hallazgo nuevo | Disposición | Evidencia |
+|---|---|---|
+| medium: `set -a; . ./.env.ci` ejecuta el archivo como script (regresión de la primera corrección) | fixed | Las variables se declaran en `env:` del job `integration`; ningún step lee ni evalúa `.env.ci`; actionlint en verde |
+| low: `Skeleton` y el texto `loading` quedaron sin uso al eliminar `loading.tsx` | fixed | Eliminados; vuelven con la feature que los use |
+| low: la guarda de `prisma.config.ts` inspeccionaba `argv` completo (incluida la ruta del CLI) | fixed | Ahora solo mira `process.argv.slice(2)` y exige el subcomando exacto |
+| low: los tests e2e corren contra el build con rutas de prueba, no contra el artefacto de producción | mitigado | El job `container` comprueba sobre la imagen real: CSP con cabecera de prefetch, `nosniff`, HSTS, ausencia de `X-Powered-By`, 404 en ruta inexistente y 404 en `/e2e/error` |
+| low: `expect(lines[0]).not.toContain("?")` acoplado a contenido incidental | fixed | Sustituido por `expect(entry.route).toBe("/api/reservas")` más la ausencia de la query string |
+| low: el comentario del logger decía tres niveles y cubre cuatro | fixed | Comentario corregido |
 
 ## Findings disposition
 | Finding | Disposition (fixed / accepted / false positive) | Rationale | Who |

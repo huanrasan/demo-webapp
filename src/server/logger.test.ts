@@ -51,7 +51,8 @@ describe("logger", () => {
       "status",
       "timestamp",
     ]);
-    for (const leaked of ["ana@example.com", "3001234567", "tel=", "?"]) {
+    expect(entry.route).toBe("/api/reservas");
+    for (const leaked of ["ana@example.com", "3001234567", "tel="]) {
       expect(lines[0]).not.toContain(leaked);
     }
   });

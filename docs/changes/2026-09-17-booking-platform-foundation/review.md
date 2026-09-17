@@ -4,84 +4,98 @@
 - Fresh context (did not see implementation session): yes
 - Verdict: changes-requested
 
-Alcance revisado: `git diff origin/main...HEAD` en `feat/booking-platform-foundation` (PR #2, HEAD `ec691cb`, 108
-archivos), contra `spec.md`, `design.md`, `plan.md`, `threat-model.md`, `verification.md` y ADR-0001..0005.
+Segunda pasada sobre el commit `1d04b30` ("fix: corregir los hallazgos de la revisión independiente"). La primera
+pasada revisó `git diff origin/main...HEAD` hasta `ec691cb` (108 archivos) y produjo 15 hallazgos; esta pasada verifica
+`git diff ec691cb..HEAD` (31 archivos) contra `spec.md`, `design.md`, `plan.md`, `threat-model.md`, `verification.md` y
+ADR-0001..0005. El revisor sigue sin acceso a la sesión de implementación.
 
-## Comandos ejecutados por el revisor
+De los 15 hallazgos previos: **12 resueltos y verificados**, **2 aceptados explícitamente** (siguen abiertos como
+riesgo) y **1 no resuelto: la corrección lo sustituyó por un vector más directo**. Además aparecen **6 hallazgos
+nuevos**, cinco de ellos introducidos por las propias correcciones.
+
+## Comandos ejecutados por el revisor (segunda pasada)
 | Comando | Resultado |
 |---|---|
-| `pnpm lint` | exit 0, 0 errores |
-| `pnpm format:check` | exit 0, "All matched files use Prettier code style!" |
-| `pnpm typecheck` | exit 0 |
-| `pnpm test` | exit 0, 7 archivos / 21 tests |
-| `pnpm test:integration` (con `docker compose up -d db mail`) | exit 0, 3 archivos / 7 tests; repetido 3 veces, sin fallos |
-| `pnpm build` | exit 0 (`next build` + `dist/worker.mjs`) |
-| `pnpm test:e2e` | exit 0, 7 passed (chromium) |
-| `python3 .harness/sdlc.pyz check` | OK: 0 error(s), 0 warning(s) |
-| `python3 .harness/sdlc.pyz arch` | OK: 0 error(s), 0 warning(s) |
-| `docker build -t booking:review .` | exit 0, imagen de 1,02 GB |
-| `docker run ... migrate deploy` | "No pending migrations to apply." (AC-2) |
-| `docker run ... booking:review` + `curl /api/health` + `id -u` | `{"status":"ok","db":"ok"}` 200, uid 1000 (AC-8) |
-| `trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1` | exit 0, sin hallazgos |
-| `actionlint` / `zizmor --offline .github/workflows` | exit 0 / "No findings to report (18 suppressed)" |
-| `gh api repos/huanrasan/demo-webapp/branches/main/protection` | checks requeridos correctos; `enforce_admins=false`, sin `required_pull_request_reviews` |
-| `npm view lodash version` | 4.18.1 — confirma que el override `^4.18.0` resuelve a una versión publicada |
+| `pnpm lint` / `pnpm format:check` / `pnpm typecheck` | exit 0 |
+| `pnpm test` | exit 0 — 7 archivos / 21 tests |
+| `pnpm test:integration` (con `docker compose up -d --wait db mail`) | exit 0 — 3 archivos / **8** tests, 4 ejecuciones seguidas sin fallos |
+| `pnpm build` | exit 0; tabla de rutas = `/`, `/_not-found`, `/api/health` (**sin** `/e2e/error`) |
+| `pnpm build` con `.env` retirado y sin variables | exit 0 — el step `Build (AC-1)` de CI, que ya no carga `.env.ci`, funciona |
+| `pnpm build:e2e` + `pnpm test:e2e` | exit 0 — **9** passed; el build e2e sí enruta `ƒ /e2e/error` |
+| `node .next/routes-manifest.json` tras `pnpm build` | `["/","/_global-error","/_not-found","/api/health","/favicon.ico"]`; `grep -rl e2e/error .next` sin resultados |
+| `docker build -t booking:review2 .` | exit 0, 1,02 GB |
+| `curl / ` con `purpose: prefetch` y con `next-router-prefetch` | CSP, HSTS, `nosniff`, `Referrer-Policy` y `x-request-id` presentes en ambos casos; sin `X-Powered-By` |
+| `curl /e2e/error` y `curl /nope` en la imagen | 404 y 404 |
+| `docker exec` `id -u` / `command -v yarn` / `ls /opt` | 1000 / `none` / sin `yarn-v*` |
+| contenedor con `DATABASE_URL` a puerto cerrado | 503 + log `{"level":"warn","event":"health_degraded","check":"database","reason":"error","errorName":"PrismaClientKnownRequestError"}` |
+| `trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 booking:review2` | exit 0, sin hallazgos |
+| `env -u MIGRATION_DATABASE_URL pnpm db:status` | exit 1, "Configuración inválida o incompleta en: MIGRATION_DATABASE_URL" |
+| `env -u MIGRATION_DATABASE_URL pnpm exec prisma generate` | exit 0 — la validación no rompe el `postinstall` |
+| prueba de `redact` de pino con las claves nuevas | `set-cookie`, `apiKey`, `password`, `secret` redactados; anidación de 5 niveles **no** redactada (límite documentado) |
+| `python3 .harness/sdlc.pyz check` / `arch` | OK: 0 error(s), 0 warning(s) |
 
-Todas las cifras de `verification.md` (21 / 7 / 7 tests, salidas de lint, formato, build, gates) se reprodujeron sin
-desviaciones. Las tres CVE de dependencias están efectivamente corregidas en `pnpm-lock.yaml` (lodash 4.18.1,
-mysql2 3.24.4, deepmerge-ts 8.0.2) y la disposición "false positive" sobre lodash es correcta.
+`approvals.toml`: la aprobación de `design.md` se reemitió (`architect`, 21:56:09 UTC) porque su hash cambió; el
+recibo anterior se retiró. Es el flujo esperado y `sdlc check` lo valida.
 
 ## Findings
 | Severity | Location | Finding | Recommendation |
 |---|---|---|---|
-| high | `src/proxy.ts:22-29` | La cláusula `missing:` del matcher exime del proxy a toda petición que traiga `next-router-prefetch` o `purpose: prefetch`. Comprobado contra la imagen de esta rama: `curl -H 'purpose: prefetch' http://localhost:3100/` devuelve la página de inicio HTML completa (9788 bytes, `<html …>`, HTTP 200) **sin** `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security` ni `x-request-id`. AC-6 exige esos headers en cualquier página HTML; el header lo elige el cliente, así que el control completo se evita con una cabecera. `tests/e2e/security-headers.spec.ts:5` solo pide `/` sin esa cabecera y no puede detectarlo | Aplicar el proxy a todas las peticiones (quitar `missing:`) o, si hay que distinguir payloads RSC, seguir emitiendo los headers en esa rama. Añadir un caso e2e que envíe `purpose: prefetch` y `next-router-prefetch` y afirme los cuatro headers |
-| high | `src/app/loading.tsx:4`, `src/app/e2e/error/page.tsx:5-6` | El `loading.tsx` de la raíz mete cada página en un límite de Suspense, así que el shell HTTP se emite antes de renderizar el cuerpo y el estado ya no se puede cambiar. Comprobado en la imagen: `/e2e/error` con `ENABLE_E2E_ROUTES=true` responde **HTTP 200** mostrando la pantalla "Algo salió mal", y sin el flag responde **HTTP 200** con el cuerpo de 404 (`NEXT_HTTP_ERROR_FALLBACK;404` en el payload RSC) pese a que el comentario del archivo afirma "Responde 404 salvo en e2e". Los errores de render del servidor y los `notFound()` dentro de páginas llegan al ALB, a los healthchecks y a los buscadores como 200, lo que inutiliza la alarma `ALB 5xx > 1 %` que `design.md §Failure modes` designa como señal principal de detección | Afirmar `response.status()` en `tests/e2e/accessibility.spec.ts:45` (y 404 en la ruta sin flag), y eliminar el `loading.tsx` de la raíz o bajarlo a un segmento que no fuerce el flush temprano del shell |
-| medium | `src/server/health.ts:10-13` | La sonda descarta el error (`.then(() => true, () => false)`) y la rama de timeout tampoco lo registra: al pasar a 503 no se emite ninguna línea de log ni métrica. `design.md §Observability` exige eventos estructurados con `event`, y el runbook no puede distinguir un timeout de una conexión rechazada | Registrar un evento `health_degraded` con `errorName` y la clase de fallo (nunca la cadena de conexión) y emitir la métrica correspondiente |
-| medium | `.github/workflows/ci.yml:53` | `grep -Ev '^(#|$)' .env.ci >> "$GITHUB_ENV"` vuelca contenido de un archivo del repo literalmente en `$GITHUB_ENV`. Al ser el repositorio público y dispararse en `pull_request`, cualquiera que abra un PR puede editar `.env.ci` e inyectar variables arbitrarias (p. ej. `NODE_OPTIONS`) en el job `integration`, que después ejecuta `pnpm build` y los tests. El impacto está acotado (token de solo lectura, sin secretos), pero zizmor suprime esta clase por defecto (18 hallazgos suprimidos, confirmado localmente), así que el linter no la cubre | Cargar el archivo dentro de cada step (`set -a; . ./.env.ci; set +a`) o enumerar las variables explícitamente en un bloque `env:` |
-| medium | `docs/changes/2026-09-17-booking-platform-foundation/verification.md:37` (AC-9) | La protección de `main` verificada por API tiene los checks correctos (`quality, integration, container, workflows, harness, sensors`, `strict: true`, sin force push ni borrado), pero `enforce_admins.enabled = false` y **no existe** bloque `required_pull_request_reviews`. AC-9 pide que "el PR queda bloqueado si alguno falla"; la única cuenta que puede mergear (administrador) está exenta justamente de ese bloqueo, así que el criterio no se cumple tal como está escrito | Activar `enforce_admins` o registrar la excepción con vencimiento en `.harness/deviations.toml` en lugar de solo anotarla en `verification.md`; añadir `required_pull_request_reviews` cuando el flujo de PR abiertos por bot esté operativo |
-| medium | `src/app/e2e/error/page.tsx:1-7` | La ruta de prueba se compila y queda enrutable en la imagen de producción (verificado: `/e2e/error` responde en `booking:review`). Su interruptor `ENABLE_E2E_ROUTES` no está en el esquema zod de `src/server/config.ts`, ni en `.env.example`, ni en la lista de variables de `design.md`, así que un valor perdido activa en producción un endpoint que lanza excepciones no controladas sin que AC-5 lo detecte | Excluir la ruta del build de producción, o añadir `ENABLE_E2E_ROUTES` al esquema y rechazar `true` cuando `NODE_ENV=production` |
-| low | `next.config.ts:3` | `poweredByHeader` no se desactiva: todas las respuestas llevan `X-Powered-By: Next.js` (verificado en la imagen). Divulga el framework y contradice el criterio de `design.md` de no exponer versión ni tecnología en respuestas | Añadir `poweredByHeader: false` a `nextConfig` |
-| low | `src/server/logger.ts:28,36` | `RequestLike.headers` se recibe y nunca se lee en `logServerError`. Por eso las aserciones de AC-10 en `src/server/logger.test.ts:41` sobre `cookie`, `authorization` y `Bearer` pasan de forma vacua: no existe ninguna ruta de código que pudiera emitirlos | Quitar el campo sin uso, o registrar una lista blanca de headers para que el test guarde algo real; mantener las aserciones sobre `logger.info`, que sí ejercitan el `redact` de pino |
-| low | `src/server/logger.ts:12-14` | `redact` solo cubre el nivel superior y un nivel de anidación (`*.${key}`), y `SENSITIVE_KEYS` omite `set-cookie`, `password`, `secret` y `apiKey`. Un objeto más profundo (`{ a: { b: { email } } }`) se registra tal cual | Ampliar las rutas de redacción y la lista de claves, o invertir a lista blanca de campos permitidos como dice `design.md §Observability` |
-| low | `src/components/ui/alert.tsx:1`, `src/components/ui/input.tsx:1`, `src/components/ui/label.tsx:1`, `src/components/form-message.tsx:1` | Ningún archivo de `src/` ni de `tests/` importa estos cuatro componentes (~114 líneas): es código muerto, sin test ni render, que igualmente entra en la imagen. `plan.md` tarea 9 los autoriza, pero la base no los necesita | Añadirlos con la primera feature que los use, o dejar constancia explícita de por qué se pre-cargan |
-| low | `Dockerfile:27` | `RUN apt-get update && apt-get upgrade -y` anula la reproducibilidad que busca el digest fijado en `Dockerfile:3`: el mismo Dockerfile produce imágenes distintas según el día, y el resultado "Trivy 0 hallazgos" no se puede reproducir solo con el digest | Subir el digest de la imagen base (el ecosistema `docker` de Dependabot ya está configurado) en lugar de actualizar paquetes en build |
-| low | `Dockerfile:28` | La etapa final elimina `npm`, `npx` y `corepack` pero deja `yarn` 1.22.22 en `/opt/yarn-v1.22.22` (visible en el inventario de Trivy de la imagen construida). El comentario de las líneas 25-26 afirma haber reducido la superficie a `node` | Eliminar también `/opt/yarn*` y `/usr/local/bin/yarn*` en el mismo `rm -rf` |
-| low | `src/server/config.ts:10-25`, `.env.example:4`, `prisma.config.ts:11` | `MIGRATION_DATABASE_URL` se usa en `prisma.config.ts` y se documenta en `.env.example` y `.env.ci`, pero no está en el esquema zod ni en la lista de variables de `design.md`. Un valor ausente o mal formado falla como error de Prisma durante `migrate deploy`, no con la salida que nombra la variable de AC-5 | Validarla en el camino de migración y añadirla a la tabla de variables de `design.md` |
-| low | `.github/workflows/sdlc-gates.yml:77-80` | `plan.md` T-15 y `design.md §Deployment` nombran `pnpm audit` / `osv-scanner` como SCA; el pipeline real usa Trivy fs y osv-scanner no se ejecuta en ningún sitio. La tabla de Deviations del plan no recoge el cambio | Corregir `plan.md`/`design.md` o añadir la fila de desviación correspondiente |
-| low | `tests/integration/worker.test.ts:37,52` | El primer test deja un worker en proceso suscrito a `system.heartbeat` hasta el `afterAll`, mientras el segundo lanza otro worker sobre la misma cola y base; ambos compiten por los mismos trabajos y el primero muta estado compartido con `deleteQueuedJobs`. `fileParallelism: false` no aísla dos workers dentro del mismo archivo. No reprodujo fallos en 3 ejecuciones seguidas, pero el acoplamiento es real | Detener el primer worker antes de lanzar el proceso hijo, o usar un nombre de cola distinto por test |
+| medium | `.github/workflows/ci.yml:56`, `:61`, `:68` | **Regresión del hallazgo M-2, no resuelto.** La corrección sustituyó `>> "$GITHUB_ENV"` por `set -a; . ./.env.ci; set +a`, que **ejecuta** el archivo como script de shell en vez de solo leerlo. Demostrado localmente: añadiendo `INJECTED=$(echo RCE-DEMO)` a una copia de `.env.ci` y haciendo `. ` sobre ella, la sustitución de comandos se ejecuta y la variable toma el valor. `.env.ci` es modificable desde un PR y el workflow dispara en `pull_request` sobre un repositorio público, así que el comentario de las líneas 53-54 ("un PR no debe poder inyectar variables en el entorno del job editando ese archivo") no se cumple: se pasó de inyección de variables a ejecución directa de comandos en el runner. El impacto sigue acotado (token de solo lectura, sin secretos en jobs de `pull_request`), pero el control es más débil que antes | Declarar los valores en un bloque `env:` del propio workflow (son fijos y no secretos) o, si debe leerse el archivo, parsearlo sin evaluarlo (`while IFS='=' read -r k v; do case "$k" in ''\|\#*) continue;; esac; export "$k=$v"; done < .env.ci`). En ningún caso `source`/`.` sobre un archivo que un PR puede editar |
+| low | `src/components/ui/skeleton.tsx:1`, `src/app/_content/es.ts:21` | **Introducido por la corrección del hallazgo de código muerto.** Al eliminar `loading.tsx` quedaron huérfanos `Skeleton` (ningún import en `src/` ni en `tests/`) y la clave `es.loading`. Se retiraron cuatro componentes sin uso y se crearon dos elementos nuevos sin uso | Eliminar ambos y recuperarlos con el primer estado de carga por segmento, igual que se decidió para `Input`, `Label`, `Alert` y `FormMessage` en `plan.md` |
+| low | `prisma.config.ts:8` | La guarda dispara con `process.argv.some((arg) => arg.includes("migrate") \|\| arg.includes("db"))`, que inspecciona **todos** los elementos de `argv`, incluido `argv[1]`, la ruta absoluta del CLI de Prisma. Cualquier checkout cuya ruta contenga `db` o `migrate` (p. ej. `/home/runner/work/booking-db/booking-db` o `~/dev/dbtools/…`) haría fallar `prisma generate` —que corre en el `postinstall` de cada `pnpm install`— con "Configuración inválida o incompleta en: MIGRATION_DATABASE_URL". No se pudo reproducir con un symlink porque Node resuelve la ruta real; es un hallazgo de lectura de código, no observado | Mirar solo el subcomando: `const cmd = process.argv[2]` y comparar contra una lista explícita (`migrate`, `db`) |
+| low | `package.json:18`, `playwright.config.ts:20` | `test:e2e` ahora ejecuta `pnpm build:e2e && playwright test`, así que la suite e2e ya no se ejecuta contra el artefacto que producen `pnpm build` y el `Dockerfile`: la evidencia de AC-6 y AC-7 sale de un build con `pageExtensions` distinto. Además deja `.next` con la ruta de prueba, de modo que un `pnpm start` posterior en local sirve `/e2e/error`; y en CI el resultado del step `Build (AC-1)` lo pisa el rebuild de `test:e2e` | Construir el bundle e2e en un `distDir` aparte, o reconstruir con `pnpm build` al terminar la suite. Como mínimo, documentar que tras `pnpm test:e2e` el `.next` local no es un build de producción |
+| low | `src/server/logger.test.ts:51` | La lista de fugas del test de AC-10 incluye `expect(lines[0]).not.toContain("?")`: un solo signo de interrogación en cualquier parte de la línea JSON rompe el test. Hoy pasa, pero queda acoplado a contenido incidental (cualquier frame del stack, mensaje o ruta que lleve `?`) | Afirmar sobre la query string real (`"email=ana@example.com"`, `"tel=3001234567"`) en lugar de un `?` suelto |
+| low | `src/server/logger.ts:24-25` | El comentario dice "se cubren los tres primeros niveles" mientras que las rutas generadas cubren cuatro (`key`, `*.key`, `*.*.key`, `*.*.*.key`). Comprobado: un `email` en el quinto nivel de anidación **no** se redacta. El límite real conviene que esté bien escrito porque es el que acota el control de T-12 | Corregir el comentario a cuatro niveles y dejar constancia de que más allá de ese punto la protección depende de no registrar objetos profundos |
 
-Sin hallazgos en: reglas de capas (`sdlc arch` en verde; `domain` no importa framework ni `server`/`app`/`worker`),
-validación de configuración (zod cubre IANA, longitud de secreto, contraste y dependencias condicionales de transporte,
-y `ConfigError` nunca imprime valores — comprobado en `config.test.ts` y con arranque real), aislamiento de secretos
-(`.gitignore` cubre `.env*` salvo `.env.example` y `.env.ci`, sin credenciales reales), privilegios de base
-(`docker/postgres/init/01-roles.sh` separa `migrator` DDL de `app` DML y `app` no puede crear esquemas), fijación por
-SHA de las acciones y por digest de las imágenes de los escáneres tocadas en este cambio, `permissions: contents: read`
-en `ci.yml`, y la conformidad con ADR-0001, 0003, 0004 y 0005 en lo que este cambio implementa.
+## Trazabilidad de los 15 hallazgos de la primera pasada
+| # | Hallazgo original | Estado | Evidencia del revisor |
+|---|---|---|---|
+| 1 | high — `src/proxy.ts`: los headers de seguridad se evitaban con `purpose: prefetch` / `next-router-prefetch` | **resuelto** | `src/proxy.ts:21-23` usa `matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]` sin `missing:`. En la imagen: ambas cabeceras devuelven CSP con `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy` y `x-request-id`. Nuevo test `tests/e2e/security-headers.spec.ts:22` que recorre los dos casos |
+| 2 | high — `loading.tsx` de la raíz forzaba HTTP 200 en errores y 404 | **resuelto** | `src/app/loading.tsx` eliminado. `tests/e2e/accessibility.spec.ts:46` afirma `response?.status() === 500` y pasa; en la imagen `/nope` devuelve 404. Documentado en `design.md §Estados de carga`. Matiz inherente al SSR en streaming: un error posterior al primer flush seguiría siendo 200; ya no es el caso garantizado |
+| 3 | medium — `/api/health` pasaba a 503 sin log ni métrica | **resuelto (log); métrica pendiente)** | `src/server/health.ts:36-43` emite `health_degraded` con `check`, `reason` (`timeout`/`error`) y `errorName`; `src/app/api/health/route.ts:8` inyecta el logger; nuevo test de integración. Verificado en contenedor con la base inaccesible. La métrica que pide `design.md §Observability` sigue sin emitirse, dentro de la brecha general de métricas EMF ya señalada |
+| 4 | medium — `ci.yml` volcaba `.env.ci` en `$GITHUB_ENV` | **no resuelto** | Ver el primer hallazgo de la tabla anterior: `source` sobre un archivo modificable desde un PR es un vector más directo que el original |
+| 5 | medium — AC-9: `enforce_admins=false` y sin `required_pull_request_reviews` | **aceptado, abierto** | Sin cambios en la protección de rama. `verification.md` lo registra como "accepted (pendiente)". Sigue sin anotarse en `.harness/deviations.toml` con vencimiento, que es donde el harness lo haría caducar |
+| 6 | medium — ruta de prueba enrutable en la imagen de producción | **resuelto** | `src/app/e2e/error/page.e2e.tsx` + `next.config.ts:4-5` (`pageExtensions` con `e2e.tsx` solo si `E2E_ROUTES=1`). `pnpm build` produce solo `/`, `/_not-found`, `/api/health`; `grep -rl "e2e/error" .next` vacío; en la imagen `find /app/.next -name '*e2e*'` vacío y `/e2e/error` → 404. El flag `ENABLE_E2E_ROUTES` desapareció de `playwright.config.ts` |
+| 7 | low — `X-Powered-By: Next.js` | **resuelto** | `next.config.ts:9` `poweredByHeader: false`; verificado con curl en la imagen; test e2e `no expone el framework en los headers` |
+| 8 | low — `RequestLike.headers` sin uso volvía vacuas las aserciones de AC-10 | **resuelto** | Campo eliminado en `src/server/logger.ts:41` y en `src/instrumentation.ts:24`. `src/server/logger.test.ts:41-52` ahora afirma la lista exacta de 11 claves emitidas, que es una aserción real sobre la lista blanca de `design.md` |
+| 9 | low — `redact` de pino: un nivel y claves faltantes | **resuelto** | `src/server/logger.ts:3-15,24-25`: se añaden `set-cookie`, `password`, `secret`, `apiKey` y cuatro niveles de rutas. Comprobado fuera del repo que las cuatro claves nuevas se redactan. Queda el detalle del comentario (hallazgo low de esta pasada) |
+| 10 | low — cuatro componentes de UI sin uso | **resuelto, con efecto colateral** | `alert.tsx`, `input.tsx`, `label.tsx` y `form-message.tsx` eliminados y registrado en `plan.md`. Pero `Skeleton` y `es.loading` quedaron huérfanos (hallazgo low de esta pasada) |
+| 11 | low — `apt-get upgrade` rompe la reproducibilidad del digest | **aceptado** | `Dockerfile:25-27`: se mantiene y el comentario explica el intercambio (parches del sistema antes que reproducibilidad bit a bit). Decisión razonable y ahora explícita |
+| 12 | low — yarn seguía en la imagen | **resuelto** | `Dockerfile:29-30` borra `/opt/yarn-v*`, `/usr/local/bin/yarn` y `yarnpkg`. En la imagen: `command -v yarn` → `none`, `ls /opt \| grep -c yarn` → 0 |
+| 13 | low — `MIGRATION_DATABASE_URL` sin validar | **resuelto** | `prisma.config.ts:7-11` y `design.md §Variables de entorno`. `pnpm db:status` sin la variable termina con código 1 y el mismo formato de mensaje de AC-5; `prisma generate` no se ve afectado. Queda la fragilidad de la heurística de `argv` (hallazgo low de esta pasada) |
+| 14 | low — `plan.md`/`design.md` nombraban osv-scanner en vez de Trivy fs | **resuelto** | Corregido en `plan.md` T-15 y en `design.md §Deployment` |
+| 15 | low — los dos tests del worker compartían cola | **resuelto** | `tests/integration/worker.test.ts:42` detiene el worker al final del primer test y desaparece el `afterAll`. 4 ejecuciones seguidas de la suite de integración en verde (8 tests) |
+
+Sin hallazgos nuevos en: reglas de capas (`sdlc arch` en verde), validación de configuración, aislamiento de secretos,
+privilegios de base, fijación por SHA/digest en workflows, tamaño y usuario de la imagen, y conformidad con
+ADR-0001, 0003, 0004 y 0005. `ux.md` mantiene en la fila de componentes una mención residual a `FormMessage` y `Alert`
+en la columna de errores pese a haberlos retirado de la lista: inconsistencia menor de documentación, no se abre como
+hallazgo porque el resto de la fila ya recoge la decisión.
 
 ## Checklist
-Marcado = dimensión efectivamente revisada por el revisor en este repositorio; el resultado de cada revisión está en
-Findings.
+Marcado = dimensión efectivamente revisada por el revisor en este repositorio, en las dos pasadas; el resultado de cada
+revisión está en Findings y en la tabla de trazabilidad.
 
-- [x] Acceptance criteria implemented and tested — AC-1..AC-5, AC-7, AC-8, AC-10..AC-12 verificados y reproducidos; **AC-6 no se cumple** (hallazgo high de `src/proxy.ts`) y **AC-9 se cumple solo parcialmente** (hallazgo medium de branch protection)
-- [x] Scope limited to plan — todo lo entregado corresponde a las tareas 1-17 de `plan.md`; sin restos de depuración ni tests comentados. Excepciones señaladas: componentes UI sin uso y ruta `/e2e/error` en la imagen de producción
-- [x] Security (input, authn/authz, secrets, dependencies, privileges) — sin authn/authz en este cambio (llega con ADR-0002); revisados validación de entrada, manejo de secretos, redacción de datos personales, overrides de dependencias, permisos de CI y privilegios de base. Hallazgos: proxy, `$GITHUB_ENV`, `/e2e/error`, redacción del logger, `X-Powered-By`, yarn en la imagen
-- [x] Conforms to accepted ADRs / contracts compatible — `sdlc arch` en verde y capas respetadas; sin API pública, `[contracts] files = []` coherente con `design.md`
-- [x] Operability (telemetry, flags, rollback) — hallazgos: errores de servidor con HTTP 200, 503 de health sin log ni métrica; las 9 métricas EMF de `design.md §Observability` no se emiten todavía (no hay tarea que las difiera explícitamente). Migración inicial vacía y rollback documentados y verificados como idempotentes
-- [x] Tests meaningful and not flaky — aserciones reales, sin esperas fijas (`waitFor` por condición); hallazgos: falta de aserción de estado HTTP en el e2e de error, aserciones vacuas de headers en `logger.test.ts`, acoplamiento entre los dos tests del worker
-- [x] Verification evidence reproducible — los 9 comandos de `verification.md`, el build y arranque de la imagen, Trivy de imagen, actionlint y zizmor se reprodujeron con resultados idénticos; la disposición "false positive" de lodash se confirmó contra el registro npm
+- [x] Acceptance criteria implemented and tested — AC-1..AC-8 y AC-10..AC-12 verificados y reproducidos; **AC-6 ahora sí se cumple** (comprobado con las dos cabeceras de prefetch y con test e2e propio); **AC-9 sigue cumpliéndose solo parcialmente**, aceptado por el product owner
+- [x] Scope limited to plan — el commit `1d04b30` se limita a los hallazgos de la revisión y a la documentación asociada; las desviaciones quedan registradas en `plan.md`. Sin restos de depuración ni tests comentados
+- [x] Security (input, authn/authz, secrets, dependencies, privileges) — sin authn/authz en este cambio; verificados headers, ruta de prueba fuera de producción, redacción de datos personales, dependencias (Trivy de imagen en verde) y permisos de CI. **Abierto: la carga de `.env.ci` en CI pasó a ejecutar el archivo**
+- [x] Conforms to accepted ADRs / contracts compatible — `sdlc arch` en verde; `design.md` actualizado y su aprobación de `architect` reemitida sobre el contenido nuevo
+- [x] Operability (telemetry, flags, rollback) — errores de servidor con 5xx y `health_degraded` en logs, ambos verificados en el contenedor. Sigue pendiente la emisión de las métricas EMF que describe `design.md §Observability`
+- [x] Tests meaningful and not flaky — 21 unit, 8 integración (4 ejecuciones seguidas) y 9 e2e con aserciones reales, incluidos ahora los códigos de estado HTTP y la lista exacta de claves del log. Hallazgos menores: `not.toContain("?")` y el build e2e que no es el de producción
+- [x] Verification evidence reproducible — todas las afirmaciones nuevas de `verification.md` (9 tests e2e, 8 de integración, disposición de cada hallazgo) se reprodujeron; la única disposición que no se sostiene es la del hallazgo de `$GITHUB_ENV`, marcada como "fixed"
 
 ## Not reviewed
-- Ejecuciones reales de CI en GitHub (runs 35262099478 y 35262099470): se revisaron las definiciones de los workflows
-  y se reprodujeron sus comandos localmente, pero no se inspeccionaron los logs de los jobs.
-- Evidencia SARIF/CycloneDX de gitleaks, Semgrep, Trivy fs y Syft: se genera en CI y no se commitea, así que solo se
-  verificó la configuración que la produce, no los resultados. El escaneo de imagen sí se reprodujo.
-- El PR de prueba #3 que sustenta AC-9: ya está cerrado y la rama eliminada; solo se verificó el estado actual de la
-  protección de rama por API y que PR #2 está en `mergeStateStatus: BLOCKED`.
-- `pnpm-lock.yaml` (10 272 líneas) más allá de los tres paquetes con override y de comprobar que
-  `pnpm install --frozen-lockfile` y el build funcionan.
-- Contenido de `discovery.md`, `ux.md`, `data.md` y `cost.md` como artefactos de decisión ya aprobados; solo se usaron
-  como referencia para contrastar el código.
-- Infraestructura AWS de ADR-0005 (ECS, ALB, RDS, SES, alarmas, IaC): no existe en este cambio, llega en la fase release.
+- Ejecuciones reales de CI en GitHub para el commit `1d04b30`: se revisaron las definiciones de los workflows y se
+  reprodujeron sus comandos localmente, pero no hay un run posterior a este commit que inspeccionar.
+- Evidencia SARIF/CycloneDX de gitleaks, Semgrep, Trivy fs y Syft: se genera en CI y no se commitea. El escaneo de
+  imagen sí se reprodujo sobre la imagen reconstruida.
+- Comportamiento de `notFound()` dentro de una página en producción: la única página que lo usaba se eliminó, así que
+  solo se comprobó el 404 de ruta inexistente.
+- El caso de error posterior al primer flush del streaming SSR (seguiría respondiendo 200): no hay ruta que lo provoque
+  en este cambio.
+- `pnpm-lock.yaml` más allá de los tres paquetes con override; el lockfile no cambió en esta pasada.
+- Contenido de `discovery.md`, `data.md` y `cost.md` como artefactos de decisión ya aprobados.
+- Infraestructura AWS de ADR-0005: no existe en este cambio, llega en la fase release.
 - Revisión manual con lector de pantalla y medición de p95 con 20 usuarios concurrentes: `verification.md` ya las
   declara pendientes y el revisor tampoco las ejecutó.
-- `release.md` y `runbook.md` siguen siendo plantillas sin rellenar; corresponden a fases posteriores y no se evaluaron.
+- `release.md` y `runbook.md` siguen siendo plantillas sin rellenar; corresponden a fases posteriores.

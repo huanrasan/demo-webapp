@@ -96,6 +96,14 @@ Resultado sobre los 15 hallazgos anteriores: 12 resueltos y verificados por el r
 | low: `expect(lines[0]).not.toContain("?")` acoplado a contenido incidental | fixed | Sustituido por `expect(entry.route).toBe("/api/reservas")` más la ausencia de la query string |
 | low: el comentario del logger decía tres niveles y cubre cuatro | fixed | Comentario corregido |
 
+## Tercera pasada de la revisión independiente
+De los 21 hallazgos previos: 19 resueltos y verificados por el revisor, 2 abiertos como riesgo aceptado. Dos nuevos:
+
+| Hallazgo nuevo | Disposición | Evidencia |
+|---|---|---|
+| low: el assert de `X-Powered-By` en ci.yml usaba `grep -qiv` y nunca podía fallar | fixed | Sustituido por `! grep -qi`; probado en bash con cabeceras con y sin `X-Powered-By`: falla solo cuando está presente (el assert anterior pasaba en ambos casos) |
+| low: ux.md seguía describiendo `Skeleton`, `FormMessage` y `Alert`, ya eliminados | fixed | Actualizado: la pantalla de error usa `role="alert"` y los mensajes por campo llegan con el primer formulario |
+
 ## Findings disposition
 | Finding | Disposition (fixed / accepted / false positive) | Rationale | Who |
 |---|---|---|---|

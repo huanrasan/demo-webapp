@@ -1,0 +1,83 @@
+# Plan: base de la plataforma de reservas
+
+## Traceability
+| Requirement / threat | Test(s) | Type |
+|---|---|---|
+| AC-1 | Job CI `build`: `pnpm install --frozen-lockfile && pnpm build` | integration (CI) |
+| AC-2 | Job CI `migrate`: `pnpm db:migrate` dos veces sobre PostgreSQL 17 vacío; la segunda sin cambios (`prisma migrate status` = up to date) | integration (CI) |
+| AC-3 | `tests/integration/health.test.ts` › "responde 200 con db ok en menos de 500 ms" | integration |
+| AC-4 | `tests/integration/health.test.ts` › "responde 503 sin detalles cuando la base no responde" | integration |
+| AC-5 | `src/server/config.test.ts` › "falla nombrando la variable sin imprimir su valor" (faltante, IANA inválida, secreto corto, color sin contraste) | unit |
+| AC-6 | `tests/e2e/security-headers.spec.ts` › CSP con nonce, `nosniff`, `Referrer-Policy`, `frame-ancestors 'none'`; HSTS con `NODE_ENV=production` | e2e |
+| AC-7 | `tests/e2e/accessibility.spec.ts` › inicio, 404 y error: `lang="es"` y cero violaciones axe `serious`/`critical` | e2e |
+| AC-8 | Job CI `container`: build de imagen, `docker run`, `curl /api/health` = 200, `docker exec id -u` ≠ 0 | integration (CI) |
+| AC-9 | Workflow `ci.yml` como check requerido + PR de prueba con un test roto que queda bloqueado y se cierra sin merge (evidencia en `verification.md`) | manual + CI |
+| AC-10 | `src/server/logger.test.ts` › "error 500 con email en query y cookie no filtra datos"; `tests/integration/health.test.ts` › "la respuesta 503 no incluye stack" | unit + integration |
+| AC-11 | `src/domain/time.test.ts` › "guarda UTC y formatea en America/Bogota"; "cruza cambio de horario en America/Santiago" | unit |
+| AC-12 | `python3 .harness/sdlc.pyz check` con ADR-0001..0005 `Accepted` y aprobados | harness gate |
+| T-1 | Feature de registro: tests de token de un solo uso, expiración a 10 min, GET no consume token | integration (feature) |
+| T-2 | Feature de registro: respuesta y tiempo iguales para email existente e inexistente | integration (feature) |
+| T-3 | Feature de registro: rate limit por IP y por email (429); alarma SES en IaC (release) | integration (feature) |
+| T-4 | Feature de registro: test estático `requireStaff()` en `src/app/(staff)/**` + e2e de rutas del panel | unit + e2e (feature) |
+| T-5 | Feature de reserva: tests IDOR de lectura, cancelación y modificación | integration (feature) |
+| T-6 | Feature de registro: e2e de enrolamiento TOTP/passkey, bloqueo tras 5 fallos, revocación de sesiones | e2e (feature) |
+| T-7 | Este cambio: `eslint.config.mjs` prohíbe `dangerouslySetInnerHTML` y `$queryRawUnsafe` (`pnpm lint` en CI con fixture que debe fallar: `tests/lint/forbidden.fixture.tsx`); CSP en `security-headers.spec.ts` | static + e2e |
+| T-8 | Este cambio: HSTS en `security-headers.spec.ts`; atributos de cookie en la feature de registro; política TLS del ALB con Checkov en release | e2e + IaC scan |
+| T-9 | Feature de reserva: test concurrente de dos reservas al mismo recurso y hora | integration (feature) |
+| T-10 | Feature de recordatorios: test de plantillas sin nombre de servicio ni recurso | unit (feature) |
+| T-11 | Release: SPF/DKIM/DMARC verificados con `dig` en `release.md` | manual (release) |
+| T-12 | Este cambio: `src/server/logger.test.ts` (AC-10) | unit |
+| T-13 | Este cambio: imagen no root y sin secretos (job `container`, Trivy); red y RDS con Checkov en release | CI + IaC scan |
+| T-14 | Este cambio: gitleaks en pre-commit y CI (`sdlc-evidence/secrets.sarif`); `config.test.ts` (AC-5) | security + unit |
+| T-15 | Este cambio: SCA (osv-scanner SARIF), Trivy de imagen, SBOM CycloneDX; `sdlc evidence check` | security |
+| T-16 | Este cambio: actionlint y zizmor en CI sobre `.github/workflows/`; acciones fijadas por SHA | static |
+| T-17 | Este cambio: `sdlc check --base origin/main` (sensor `weakened_tests`) en CI | harness gate |
+| T-18 | Feature del panel: test de `AuditEvent` al cancelar por personal | integration (feature) |
+| T-19 | Release: política de escalado y alarma 5xx en IaC (Checkov + revisión) | IaC scan (release) |
+| T-20 | Feature de retención (tras registro y reserva): test de anonimización y métrica de última ejecución | integration (feature) |
+
+## Tasks
+Cada tarea es un PR pequeño (< 400 líneas cambiadas, sin contar lockfile ni componentes generados por shadcn), con el
+test antes o junto al comportamiento. Paralelizables: 3 con 4; 7 con 8 y 9 (tras 5).
+
+| # | Task | Done when (command or check) | Depends on | Status |
+|---|---|---|---|---|
+| 1 | Estructura inicial: Next.js 16 + TypeScript estricto + pnpm + Node 24 (`.nvmrc`, `engines`), ESLint (reglas T-7 con fixture), Prettier, Vitest (unit e integración separados), Playwright, alias `@/domain` `@/server` `@/app` `@/components` `@/worker`, `.gitignore`, `.env.example` | `pnpm install --frozen-lockfile && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build` y `python3 .harness/sdlc.pyz arch` en verde | - | todo |
+| 2 | Hooks de git: `python3 .harness/sdlc.pyz hooks` + gitleaks en pre-commit | `git commit` con un secreto de prueba en un archivo temporal es rechazado (se descarta sin commit) | 1 | todo |
+| 3 | `src/domain/time.ts` (UTC ↔ `BUSINESS_TIMEZONE`, formato `es-CO`) test-first | `pnpm test -- src/domain/time.test.ts` | 1 | todo |
+| 4 | `src/server/config.ts` con zod: variables de `design.md`, validación IANA, longitud de secreto, contraste de `BRAND_PRIMARY_COLOR`; salida con código 1 sin imprimir valores | `pnpm test -- src/server/config.test.ts` | 1 | todo |
+| 5 | `src/server/logger.ts` (pino) con lista de campos permitidos, redacción y `requestId` | `pnpm test -- src/server/logger.test.ts` | 4 | todo |
+| 6 | `docker-compose.yml` (postgres:17 con script de usuarios `app`/`migrator`, Mailpit); Prisma 7 (`prisma.config.ts`, `@prisma/adapter-pg`), migración inicial vacía, scripts `db:migrate` y `db:dev` | `docker compose up -d db && pnpm db:migrate && pnpm db:migrate && pnpm prisma migrate status` sin pendientes | 4 | todo |
+| 7 | `GET /api/health` con `SELECT 1` y timeout 300 ms, `Cache-Control: no-store`; tests de integración con PostgreSQL real y con base inaccesible | `docker compose up -d db && pnpm test:integration -- tests/integration/health.test.ts` | 5, 6 | todo |
+| 8 | `src/proxy.ts`: nonce CSP, headers de seguridad, HSTS en producción, `requestId` | `pnpm build && pnpm test:e2e -- tests/e2e/security-headers.spec.ts` | 5 | todo |
+| 9 | UI base: Tailwind 4, shadcn/ui (`Button`, `Link`, `Input`, `Label`, `FormMessage`, `Alert`, `Skeleton`), tokens, layout con "Saltar al contenido", inicio, `not-found`, `error`/`global-error` con `requestId`, `loading`; textos en `src/app/_content/es.ts` | `pnpm test:e2e -- tests/e2e/accessibility.spec.ts` | 8 | todo |
+| 10 | `EmailSender` con adaptadores `smtp` (Mailpit), `ses` (SESv2, cliente inyectable) y `memory`; selección por `EMAIL_TRANSPORT` | `pnpm test -- src/server/email` y `pnpm test:integration -- tests/integration/email-smtp.test.ts` con Mailpit | 4 | todo |
+| 11 | Worker: `src/worker/index.ts` con pg-boss (esquema `pgboss`), trabajo `system.heartbeat` cada minuto, apagado ordenado con `SIGTERM` ≤ 30 s; script `worker` | `pnpm test:integration -- tests/integration/worker.test.ts` (heartbeat registrado; `SIGTERM` termina con código 0) | 6 | todo |
+| 12 | `Dockerfile` multi-etapa (`node:24-slim` por digest, `standalone`, usuario no root, comandos `web`/`worker`/`migrate`), `.dockerignore` | `docker build -t booking:local . && docker run --rm -d -p 3000:3000 --env-file .env.ci booking:local` + `curl -fsS localhost:3000/api/health` + `docker exec <id> id -u` ≠ 0 | 7, 11 | todo |
+| 13 | `.github/workflows/ci.yml`: lint, formato, typecheck, unit, `migrate` (AC-2), integración y e2e con servicios PostgreSQL y Mailpit, build, `container` (AC-8), gitleaks, Semgrep, osv-scanner, Trivy, syft (SARIF y SBOM en `sdlc-evidence/`), actionlint, zizmor; acciones fijadas por SHA; `permissions` mínimos | Workflow en verde en el PR; `python3 .harness/sdlc.pyz evidence check` en CI en verde | 1-12 | todo |
+| 14 | Registrar `test_paths` y `[tdd]` en `harness.toml` (requiere revisión de platform/security por CODEOWNERS) | `python3 .harness/sdlc.pyz check` en verde y revisión aprobada del PR | 13 | todo |
+| 15 | Actualizar `AGENTS.md` (Better Auth en el stack, comandos reales, `pnpm worker`, `pnpm test:integration`) y `README.md` para humanos (arranque local) | `python3 .harness/sdlc.pyz check` (límite de 150 líneas de `AGENTS.md`) y los comandos del README ejecutados en un clon limpio | 13 | todo |
+| 16 | **Decisión humana:** activar branch protection en `main` con `ci` y `sdlc-gates` como checks requeridos | Captura o salida de `gh api repos/huanrasan/demo-webapp/branches/main/protection` en `verification.md` | 13 | todo |
+| 17 | **Humano + agente:** PR de prueba con un test roto; confirmar que queda bloqueado y cerrarlo sin merge (AC-9) | Enlace al PR bloqueado en `verification.md` | 16 | todo |
+
+## Environments, data and access
+- **Local:** Docker Desktop, Node 24, pnpm; PostgreSQL y Mailpit en Docker Compose. Datos sintéticos únicamente;
+  `.env` local fuera del repo, generado desde `.env.example` con un `BETTER_AUTH_SECRET` aleatorio de desarrollo.
+- **CI:** GitHub Actions con servicios PostgreSQL 17 y Mailpit; `.env.ci` con valores no secretos de prueba
+  (sin credenciales reales). Sin acceso a AWS en este cambio: el adaptador SES se prueba con cliente simulado.
+- **Credenciales:** ninguna credencial de nube ni de producción. Branch protection (tarea 16) requiere permisos de
+  administrador del repo: la ejecuta el humano.
+- **Producción y staging:** fuera de este plan; se aprovisionan con IaC en la fase release.
+
+## Rollback per migration / infrastructure step
+- **Migración inicial (tarea 6):** vacía; rollback = eliminar la base local o el servicio de CI. Sin datos.
+- **Esquema `pgboss` (tarea 11):** creado por pg-boss; rollback = `DROP SCHEMA pgboss CASCADE` en local/CI
+  (sin datos de negocio).
+- **CI y branch protection (tareas 13 y 16):** revertir el commit del workflow; desactivar la regla desde la
+  configuración del repo (acción humana).
+- **Infraestructura AWS:** no hay cambios en este plan.
+
+## Deviations
+| Date | Change to plan | Reason |
+|---|---|---|
+| 2026-09-17 | Un solo PR desde `feat/booking-platform-foundation` con un commit pequeño por tarea, en lugar de un PR por tarea | Decisión de huanrasan: un único mantenedor; la revisión se hace por commit |

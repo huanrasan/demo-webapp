@@ -1,0 +1,71 @@
+# Approval receipts. Written by `sdlc approve`; verified by `sdlc check` and `sdlc approvals verify`.
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/discovery.md"
+sha256 = "a55bc0cb96ef51494cd1068c765db40a1406fde400f99297d6ec4b424a3db9af"
+role = "product-owner"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:22:56+00:00"
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/spec.md"
+sha256 = "fedd8633593fee2a80ce198a55fd21c36579da5727f534feb69d637e672876db"
+role = "product-owner"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:51:46+00:00"
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/design.md"
+sha256 = "a0c498d549fe0330df7f43b8a63d64ed4ca1aa356370c5d50cdf19852b8d2393"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:52:08+00:00"
+
+[[approval]]
+artifact = "docs/adr/0001-monolito-nextjs-single-tenant-por-capas.md"
+sha256 = "c1e36f215f56ddd3de94e3d0c11b65bf135bb23fae57efe102a5555017f8d821"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:52:24+00:00"
+
+[[approval]]
+artifact = "docs/adr/0002-better-auth-enlace-magico-y-segundo-factor-staff.md"
+sha256 = "bf7ee2a89eeed3346c4722ea282b003b0c8632186a62ddbb9c29b84d1db92818"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:52:37+00:00"
+
+[[approval]]
+artifact = "docs/adr/0003-postgresql-prisma-single-tenant.md"
+sha256 = "f8e78a078576da058536b26f420f21d8990d56aa934fc56f1bb7141e24b959c4"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:52:50+00:00"
+
+[[approval]]
+artifact = "docs/adr/0004-email-ses-y-tareas-con-pg-boss.md"
+sha256 = "0a58d5baf898728be71da60845e489e848db1e2953db08e2d38c496c7f22655d"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:53:03+00:00"
+
+[[approval]]
+artifact = "docs/adr/0005-despliegue-aws-ecs-fargate.md"
+sha256 = "ae676a2f6bbb0eacce616cedd08e3b9a200b8a91fb921b65729f58537736d815"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:53:12+00:00"
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/threat-model.md"
+sha256 = "84632c8895e549875b0541a9103cb64fc54e966a1223190f990eace4a97a8c82"
+role = "security"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:53:21+00:00"
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/data.md"
+sha256 = "8c42a071e838755374d619e609254d215866db5195e9b83a43d99c2cc93b4847"
+role = "data-steward"
+approver = "huanrasan"
+approved_at = "2026-09-17T13:53:29+00:00"

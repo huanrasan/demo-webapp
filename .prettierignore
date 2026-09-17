@@ -1,0 +1,10 @@
+# Documentación y archivos gestionados por el harness: no se formatean con Prettier.
+docs/
+*.md
+.harness/
+.agents/
+.claude/
+.gemini/
+.github/
+pnpm-lock.yaml
+tests/lint/fixtures/

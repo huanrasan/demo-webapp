@@ -97,7 +97,9 @@ jobs:
           path: sdlc-evidence/
 
   dependencies:
-    if: github.event_name == 'pull_request'
+    # Requiere Dependency graph + GitHub Advanced Security: no disponible en repositorios privados sin GHAS.
+    # En privado, la cobertura de dependencias la dan Trivy (sca.sarif) y el SBOM del job `sensors`.
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v4

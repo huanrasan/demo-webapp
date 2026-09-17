@@ -38,7 +38,7 @@ contra blanco al arrancar (si no cumple, la app no arranca y lo informa); neutro
 ## Accessibility (WCAG 2.2 AA)
 - [x] Keyboard operable, visible focus, logical order: enlace "Saltar al contenido"; anillo de foco de 2 px con contraste ≥ 3:1 (2.4.7, 2.4.11); orden de DOM igual al visual; componentes Radix con manejo de teclado
 - [x] Contrast ratios and non-color cues: texto ≥ 4,5:1, elementos de interfaz ≥ 3:1; color primario validado al arrancar; errores con icono y texto, no solo color
-- [x] Labels, names and roles for assistive technologies: `lang="es"`; landmarks `header`/`main`/`footer`; `Label` obligatorio en `Input`; botones con nombre accesible
+- [x] Labels, names and roles for assistive technologies: `lang="es"`; landmarks `header` y `main` (el pie llega con la política de tratamiento, en la feature de registro); botones y enlaces con nombre accesible; las etiquetas de campo se verifican con el primer formulario
 - [x] Error identification and recovery: página de error con `role="alert"` y acción "Reintentar"; la identificación de errores por campo (`aria-describedby`, `aria-invalid`) se verifica con el primer formulario
 - [x] Responsive / zoom to 200% without loss: layout fluido desde 320 px (1.4.10 Reflow); objetivos táctiles ≥ 24 × 24 px (2.5.8)
 - [x] Motion and timing respect user preferences: animaciones desactivadas con `prefers-reduced-motion`; sin límites de tiempo en estas pantallas (la expiración del enlace mágico se diseña en la feature de registro)

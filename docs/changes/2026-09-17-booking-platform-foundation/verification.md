@@ -104,6 +104,11 @@ De los 21 hallazgos previos: 19 resueltos y verificados por el revisor, 2 abiert
 | low: el assert de `X-Powered-By` en ci.yml usaba `grep -qiv` y nunca podía fallar | fixed | Escrito como `if grep -qi ...; then exit 1; fi`: `! grep` habría quedado exento de `errexit` (SC2251 de shellcheck, detectado por actionlint). Probado en bash con cabeceras con y sin `X-Powered-By`: sale 1 solo cuando está presente |
 | low: ux.md seguía describiendo `Skeleton`, `FormMessage` y `Alert`, ya eliminados | fixed | Actualizado: la pantalla de error usa `role="alert"` y los mensajes por campo llegan con el primer formulario |
 
+## Cierre de la revisión independiente (cuarta pasada)
+Veredicto `ready-for-human-approval`. Balance: 23 hallazgos en cuatro pasadas, 21 resueltos y verificados por el
+revisor, 2 abiertos como riesgo aceptado por el product owner. Se corrigió además una observación `info` sobre
+`ux.md` (citaba un `footer` y componentes ya eliminados) que el revisor había dejado fuera del veredicto.
+
 ## Findings disposition
 | Finding | Disposition (fixed / accepted / false positive) | Rationale | Who |
 |---|---|---|---|

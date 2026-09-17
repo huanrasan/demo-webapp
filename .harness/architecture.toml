@@ -19,3 +19,41 @@
 # forbid_layers = ["adapters"]
 # forbid_imports = ["requests", "sqlalchemy", "boto3"]
 # adr = "docs/adr/0001-hexagonal-architecture.md"
+
+[[layers]]
+name = "domain"
+paths = ["src/domain/**"]
+modules = ["@/domain"]
+
+[[layers]]
+name = "server"
+paths = ["src/server/**"]
+modules = ["@/server"]
+
+[[layers]]
+name = "app"
+paths = ["src/app/**", "src/components/**", "src/proxy.ts"]
+modules = ["@/app", "@/components"]
+
+[[layers]]
+name = "worker"
+paths = ["src/worker/**"]
+modules = ["@/worker"]
+
+[[rules]]
+layer = "domain"
+forbid_layers = ["server", "app", "worker"]
+forbid_imports = ["next", "react", "react-dom", "@prisma/client", "@prisma/adapter-pg", "@aws-sdk", "pg-boss", "better-auth", "pino", "nodemailer"]
+adr = "docs/adr/0001-monolito-nextjs-single-tenant-por-capas.md"
+
+[[rules]]
+layer = "server"
+forbid_layers = ["app", "worker"]
+forbid_imports = ["react", "react-dom"]
+adr = "docs/adr/0001-monolito-nextjs-single-tenant-por-capas.md"
+
+[[rules]]
+layer = "worker"
+forbid_layers = ["app"]
+forbid_imports = ["next", "react", "react-dom"]
+adr = "docs/adr/0001-monolito-nextjs-single-tenant-por-capas.md"

@@ -32,7 +32,7 @@ modules = ["@/server"]
 
 [[layers]]
 name = "app"
-paths = ["src/app/**", "src/components/**", "src/proxy.ts"]
+paths = ["src/app/**", "src/components/**", "src/proxy.ts", "src/instrumentation.ts"]
 modules = ["@/app", "@/components"]
 
 [[layers]]

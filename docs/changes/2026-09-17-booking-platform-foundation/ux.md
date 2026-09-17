@@ -9,7 +9,7 @@ layout, página de inicio, páginas de error y carga, componentes base y tokens.
 | Visitante abre la app | URL raíz | AC-7: página de inicio en español, `lang="es"`, cero violaciones axe `serious`/`critical` |
 | Visitante sigue un enlace inexistente | Cualquier URL no definida | Página 404 en español con enlace a inicio |
 | Error del servidor | Excepción no controlada | Página de error en español sin detalles técnicos, con `requestId` para soporte (AC-4, AC-10) |
-| Carga lenta de una ruta | Navegación con datos del servidor | Estado de carga accesible (`loading.tsx`) |
+| Carga lenta de una ruta | Navegación con datos del servidor | Estado de carga accesible por segmento, en las features que lo necesiten |
 | Navegación por teclado | Tab desde la carga de la página | Enlace "Saltar al contenido" como primer elemento enfocable |
 
 Flujos de negocio previstos para features posteriores (sin diseño en este cambio): registro e inicio de sesión,
@@ -23,8 +23,8 @@ del panel.
 | Página de inicio `/` | n/a: contenido estático | n/a | Hereda página de error global | Título del negocio, descripción breve, botón "Reservar un turno" deshabilitado con texto "Disponible pronto" hasta la feature de reservas | Idem |
 | 404 `not-found.tsx` | n/a | n/a | n/a | "No encontramos esta página" + enlace "Volver al inicio" | Idem |
 | Error global `error.tsx` / `global-error.tsx` | n/a | n/a | "Algo salió mal. Intenta de nuevo." + botón "Reintentar" + "Código de referencia: <requestId>" | n/a | Idem |
-| Carga `loading.tsx` | n/a | Indicador con `role="status"` y texto oculto "Cargando…"; respeta `prefers-reduced-motion` | n/a | n/a | Idem |
-| Componentes base: `Button`, `Link`, `Input`, `Label`, `FormMessage`, `Alert`, `Skeleton` | n/a | `Button` con estado `aria-busy` | `FormMessage` asociado con `aria-describedby`; `Alert` con `role="alert"` | Estados de foco visibles | shadcn/ui (Radix UI) sobre Tailwind CSS 4 |
+| Carga (por segmento, en features) | n/a | Indicador con `role="status"` y texto oculto "Cargando…"; respeta `prefers-reduced-motion`. No se añade en la raíz: forzaría HTTP 200 en errores y 404 | n/a | n/a | Idem |
+| Componentes base: `Button`, `Link`, `Skeleton` (los de formulario llegan con la feature que los use) | n/a | `Button` con estado `aria-busy` | `FormMessage` asociado con `aria-describedby`; `Alert` con `role="alert"` | Estados de foco visibles | shadcn/ui (Radix UI) sobre Tailwind CSS 4 |
 
 **Design system:** shadcn/ui (componentes copiados al repo, basados en Radix UI, accesibles por defecto) y Tailwind
 CSS 4. Motivo: sin dependencia de runtime de un kit cerrado, componentes accesibles probados y personalizables por

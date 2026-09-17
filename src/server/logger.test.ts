@@ -22,7 +22,6 @@ describe("logger", () => {
       request: {
         method: "POST",
         url: "https://reservas.example.com/api/reservas?email=ana@example.com&tel=3001234567",
-        headers: new Headers({ cookie: "session=abc123", authorization: "Bearer xyz789" }),
       },
       error: new Error("No se pudo reservar para ana@example.com"),
     });
@@ -38,7 +37,21 @@ describe("logger", () => {
       event: "server_error",
     });
     expect(new Date(entry.timestamp).toISOString()).toBe(entry.timestamp);
-    for (const leaked of ["ana@example.com", "3001234567", "abc123", "xyz789", "Bearer"]) {
+    // La entrada solo contiene campos de la lista permitida (design.md §Observability).
+    expect(Object.keys(entry).sort()).toEqual([
+      "errorMessage",
+      "errorName",
+      "event",
+      "level",
+      "method",
+      "msg",
+      "requestId",
+      "route",
+      "stack",
+      "status",
+      "timestamp",
+    ]);
+    for (const leaked of ["ana@example.com", "3001234567", "tel=", "?"]) {
       expect(lines[0]).not.toContain(leaked);
     }
   });
@@ -49,7 +62,7 @@ describe("logger", () => {
     logServerError(logger, {
       requestId: "req-456",
       digest: "3412098765",
-      request: { method: "GET", url: "/", headers: new Headers() },
+      request: { method: "GET", url: "/" },
       error: new Error("fallo"),
     });
 
@@ -67,6 +80,7 @@ describe("logger", () => {
         authorization: "Bearer xyz789",
         cookie: "session=abc123",
         user: { email: "luis@example.com" },
+        pedido: { cliente: { contacto: { email: "profundo@example.com" } } },
       },
       "evento",
     );
@@ -78,6 +92,7 @@ describe("logger", () => {
       "xyz789",
       "abc123",
       "luis@example.com",
+      "profundo@example.com",
     ]) {
       expect(lines[0]).not.toContain(leaked);
     }

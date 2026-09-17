@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { Writable } from "node:stream";
-import { afterAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createLogger } from "@/server/logger";
 import { HEARTBEAT_QUEUE, startWorker } from "@/worker/worker";
 import { buildWorker, WORKER_OUTFILE } from "../../scripts/build-worker.mjs";
@@ -27,15 +27,9 @@ async function waitFor(condition: () => boolean, timeoutMs: number) {
 }
 
 describe("worker", () => {
-  const stops: (() => Promise<void>)[] = [];
-  afterAll(async () => {
-    await Promise.all(stops.map((stop) => stop()));
-  });
-
   it("programa el heartbeat cada minuto y lo procesa", async () => {
     const { events, logger } = capture();
     const worker = await startWorker({ connectionString: databaseUrl, logger });
-    stops.push(worker.stop);
 
     const schedules = await worker.boss.getSchedules(HEARTBEAT_QUEUE);
     expect(schedules.map((s) => s.cron)).toEqual(["* * * * *"]);
@@ -44,6 +38,9 @@ describe("worker", () => {
     await worker.boss.deleteQueuedJobs(HEARTBEAT_QUEUE);
     await worker.boss.send(HEARTBEAT_QUEUE);
     await waitFor(() => events.includes("worker_heartbeat"), 10_000);
+
+    // El siguiente test lanza otro worker sobre la misma cola: este debe soltarla antes.
+    await worker.stop();
   });
 
   it("termina con código 0 al recibir SIGTERM", async () => {

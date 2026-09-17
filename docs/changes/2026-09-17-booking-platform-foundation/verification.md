@@ -1,6 +1,6 @@
 # Verification: base de la plataforma de reservas
 
-Commit verificado: 58717d2 (rama feat/booking-platform-foundation, PR #2).
+Commit verificado: tras aplicar los hallazgos de review.md (rama feat/booking-platform-foundation, PR #2).
 CI: run 35262099478 (sdlc-gates) y 35262099470 (ci), 2026-09-17.
 
 ## Commands run
@@ -9,9 +9,10 @@ $ pnpm lint                      # eslint . -> 0 errores, 0 advertencias
 $ pnpm format:check              # All matched files use Prettier code style!
 $ pnpm typecheck                 # tsc --noEmit -> sin errores
 $ pnpm test                      # Test Files 7 passed (7) | Tests 21 passed (21)
+$ pnpm build:e2e                 # build con la ruta de prueba (E2E_ROUTES=1); pnpm build no la incluye
 $ pnpm test:integration          # Test Files 3 passed (3) | Tests 7 passed (7)   (3 ejecuciones seguidas, sin fallos)
 $ pnpm build                     # next build OK + node scripts/build-worker.mjs -> dist/worker.mjs
-$ pnpm test:e2e                  # 7 passed (3.0s), chromium
+$ pnpm test:e2e                  # 9 passed, chromium (incluye prefetch, X-Powered-By y códigos de estado)
 $ python3 .harness/sdlc.pyz check   # OK: 0 error(s), 0 warning(s)
 $ python3 .harness/sdlc.pyz arch    # OK: 0 error(s), 0 warning(s)
 $ python3 .harness/sdlc.pyz tdd --base main   # OK: 0 error(s), 0 warning(s)
@@ -35,9 +36,9 @@ CI (PR #2): quality pass, integration pass, container pass, sensors pass, workfl
 | AC-1 | pass | Job integration de ci.yml: pnpm install --frozen-lockfile y pnpm build terminan con código 0 (run 35262099470) |
 | AC-2 | pass | Job integration de ci.yml: pnpm db:migrate dos veces y pnpm db:status sobre PostgreSQL 17 vacío; segunda ejecución sin cambios |
 | AC-3 | pass | `responde 200 con db ok en menos de 500 ms` (tests/integration/health.test.ts) |
-| AC-4 | pass | `responde 503 sin detalles cuando la base no responde` y `responde 503 si la consulta excede el tiempo límite` |
+| AC-4 | pass | `responde 503 sin detalles cuando la base no responde`, `responde 503 si la consulta excede el tiempo límite` y `registra el motivo de la degradación sin exponerlo en la respuesta` |
 | AC-5 | pass | `falla nombrando la variable sin imprimir su valor`, `falla si falta una variable obligatoria`, `rechaza un color de marca sin contraste 4,5:1 sobre blanco`, `exige SMTP_URL con transporte smtp y AWS_REGION con transporte ses`, `termina el proceso con código 1 y sin valores en stderr`; además arranque real sin variables termina con código 1 |
-| AC-6 | pass | `la página de inicio envía CSP con nonce y headers de seguridad` y `cada petición recibe un nonce distinto` (e2e); `en desarrollo omite HSTS y permite eval para las herramientas de React` (unit) |
+| AC-6 | pass | `la página de inicio envía CSP con nonce y headers de seguridad`, `una cabecera de prefetch no evita los headers de seguridad`, `no expone el framework en los headers` y `cada petición recibe un nonce distinto` (e2e); `en desarrollo omite HSTS y permite eval para las herramientas de React` (unit) |
 | AC-7 | pass | `inicio en español, con nombre del negocio y sin violaciones graves`, `404 en español con enlace al inicio`, `error del servidor sin detalles técnicos y con código de referencia`, `el primer elemento enfocable salta al contenido` (axe-core, WCAG 2.2 AA) |
 | AC-8 | pass | Job container de ci.yml: build de imagen, migrate, arranque con --read-only, curl /api/health = 200 y id -u distinto de 0 |
 | AC-9 | pass | Protección de main con checks obligatorios (quality, integration, container, workflows, harness, sensors), sin force push ni borrado. PR de prueba #3 con un test roto: quality FAILURE y mergeable_state blocked; cerrado sin merge y rama eliminada |
@@ -59,6 +60,25 @@ CI (PR #2): quality pass, integration pass, container pass, sensors pass, workfl
 ## Verificación manual
 - Navegador real (Chromium vía Playwright): inicio, 404, pantalla de error y navegación con teclado (Tab al enlace "Saltar al contenido" y foco en el contenido principal).
 - **No realizado:** revisión manual con lector de pantalla (VoiceOver) prevista en ux.md, y medición de p95 con 20 usuarios concurrentes. Ambas quedan como pendientes antes del release; este cambio no expone flujos de usuario.
+
+## Hallazgos de la revisión independiente (review.md, veredicto changes-requested)
+| Hallazgo | Disposición | Evidencia |
+|---|---|---|
+| high: los headers de seguridad se evitaban con la cabecera `purpose: prefetch` (src/proxy.ts) | fixed | El matcher ya no excluye peticiones por cabecera; e2e `una cabecera de prefetch no evita los headers de seguridad`; comprobado con curl en el servidor construido |
+| high: errores del servidor y 404 respondían HTTP 200 por el `loading.tsx` de la raíz | fixed | Eliminado el Suspense de la raíz: /no-existe devuelve 404 y /e2e/error devuelve 500; e2e afirma `response.status()` |
+| medium: `/api/health` pasaba a 503 sin log ni métrica | fixed | `health_degraded` con `reason` (timeout o error) y `errorName`; test `registra el motivo de la degradación sin exponerlo en la respuesta` |
+| medium: ci.yml volcaba .env.ci en `$GITHUB_ENV` (inyección desde un PR) | fixed | Cada step carga el archivo en su propia shell; actionlint en verde |
+| medium: la ruta de prueba se compilaba en la imagen de producción con un flag sin validar | fixed | La página es `page.e2e.tsx` y solo entra con `E2E_ROUTES=1`; `pnpm build` produce únicamente /, /_not-found y /api/health |
+| medium: AC-9 no se cumple del todo porque la protección exime a administradores | accepted (pendiente) | Decisión de huanrasan para no bloquearse mientras el flujo de PR por bot no existe; se activará junto con ese flujo |
+| low: `X-Powered-By: Next.js` | fixed | `poweredByHeader: false`; e2e `no expone el framework en los headers` |
+| low: `RequestLike.headers` sin uso hacía vacuas las aserciones de AC-10 | fixed | Campo eliminado; el test afirma la lista exacta de claves emitidas y que no aparece la query string |
+| low: `redact` de pino solo cubría un nivel y omitía claves | fixed | Tres niveles de anidación y claves `set-cookie`, `password`, `secret`, `apiKey`; test con objeto anidado |
+| low: cuatro componentes de UI sin uso | fixed | Eliminados; llegan con la feature que los use (registrado en plan.md) |
+| low: yarn seguía en la imagen | fixed | Eliminado junto con npm, npx y corepack |
+| low: `apt-get upgrade` rompe la reproducibilidad del digest | accepted | Se prefiere aplicar parches del sistema a esperar la imagen base; documentado en el Dockerfile |
+| low: `MIGRATION_DATABASE_URL` sin validar | fixed | `prisma.config.ts` falla con el mismo formato de mensaje que AC-5 cuando falta en comandos de migración |
+| low: plan.md y design.md nombraban osv-scanner en vez de Trivy fs | fixed | Corregido en ambos documentos |
+| low: los dos tests del worker compartían cola | fixed | El primero detiene su worker antes de que el segundo lance el proceso hijo |
 
 ## Findings disposition
 | Finding | Disposition (fixed / accepted / false positive) | Rationale | Who |

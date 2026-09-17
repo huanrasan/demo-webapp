@@ -37,10 +37,27 @@ describe("GET /api/health", () => {
     const hanging = { $queryRaw: () => new Promise(() => {}) } as unknown as typeof reachable;
 
     const started = performance.now();
-    const response = await handleHealth(hanging, 50);
+    const response = await handleHealth(hanging, { timeoutMs: 50 });
 
     expect(performance.now() - started).toBeLessThan(250);
     expect(response.status).toBe(503);
+  });
+
+  it("registra el motivo de la degradación sin exponerlo en la respuesta", async () => {
+    const warnings: Record<string, unknown>[] = [];
+    const logger = { warn: (entry: Record<string, unknown>) => warnings.push(entry) } as never;
+
+    const response = await handleHealth(unreachable, { logger });
+
+    expect(response.status).toBe(503);
+    expect(warnings).toEqual([
+      {
+        event: "health_degraded",
+        check: "database",
+        reason: "error",
+        errorName: expect.any(String),
+      },
+    ]);
   });
 
   it("la respuesta 503 no incluye stack", async () => {

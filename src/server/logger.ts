@@ -1,6 +1,18 @@
 import pino, { type DestinationStream, type Logger } from "pino";
 
-const SENSITIVE_KEYS = ["email", "phone", "token", "authorization", "cookie", "headers", "body"];
+const SENSITIVE_KEYS = [
+  "email",
+  "phone",
+  "token",
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "password",
+  "secret",
+  "apiKey",
+  "headers",
+  "body",
+];
 
 export function createLogger(options: { level: string; destination?: DestinationStream }): Logger {
   return pino(
@@ -10,7 +22,8 @@ export function createLogger(options: { level: string; destination?: Destination
       timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
       formatters: { level: (label) => ({ level: label }) },
       redact: {
-        paths: [...SENSITIVE_KEYS, ...SENSITIVE_KEYS.map((key) => `*.${key}`)],
+        // pino no soporta profundidad ilimitada: se cubren los tres primeros niveles.
+        paths: SENSITIVE_KEYS.flatMap((key) => [key, `*.${key}`, `*.*.${key}`, `*.*.*.${key}`]),
         censor: "[redactado]",
       },
     },
@@ -25,7 +38,7 @@ function scrub(text: string): string {
     .replace(/\+?\d[\d\s-]{6,}\d/g, "[número]");
 }
 
-type RequestLike = { method: string; url: string; headers: Headers };
+type RequestLike = { method: string; url: string };
 
 export function logServerError(
   logger: Logger,

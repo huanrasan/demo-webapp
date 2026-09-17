@@ -15,13 +15,6 @@ approver = "huanrasan"
 approved_at = "2026-09-17T13:51:46+00:00"
 
 [[approval]]
-artifact = "docs/changes/2026-09-17-booking-platform-foundation/design.md"
-sha256 = "a0c498d549fe0330df7f43b8a63d64ed4ca1aa356370c5d50cdf19852b8d2393"
-role = "architect"
-approver = "huanrasan"
-approved_at = "2026-09-17T13:52:08+00:00"
-
-[[approval]]
 artifact = "docs/adr/0001-monolito-nextjs-single-tenant-por-capas.md"
 sha256 = "c1e36f215f56ddd3de94e3d0c11b65bf135bb23fae57efe102a5555017f8d821"
 role = "architect"
@@ -69,3 +62,10 @@ sha256 = "8c42a071e838755374d619e609254d215866db5195e9b83a43d99c2cc93b4847"
 role = "data-steward"
 approver = "huanrasan"
 approved_at = "2026-09-17T13:53:29+00:00"
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/design.md"
+sha256 = "c04b5bc30bb6482d2f641451c12a6171b193755441d1e2bc3a65073fb1af13ff"
+role = "architect"
+approver = "huanrasan"
+approved_at = "2026-09-17T21:56:09+00:00"

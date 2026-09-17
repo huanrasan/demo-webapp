@@ -19,6 +19,25 @@ test.describe("headers de seguridad", () => {
     expect(headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
   });
 
+  test("una cabecera de prefetch no evita los headers de seguridad", async ({ request }) => {
+    const cases: Record<string, string>[] = [
+      { purpose: "prefetch" },
+      { "next-router-prefetch": "1" },
+    ];
+    for (const headers of cases) {
+      const response = await request.get("/", { headers });
+
+      expect(response.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+      expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+      expect(response.headers()["strict-transport-security"]).toBeTruthy();
+      expect(response.headers()["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
+    }
+  });
+
+  test("no expone el framework en los headers", async ({ request }) => {
+    expect((await request.get("/")).headers()["x-powered-by"]).toBeUndefined();
+  });
+
   test("cada petición recibe un nonce distinto", async ({ request }) => {
     const nonceOf = async () =>
       (await request.get("/")).headers()["content-security-policy"].match(/'nonce-([^']+)'/)?.[1];

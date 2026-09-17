@@ -29,7 +29,7 @@
 | T-12 | Este cambio: `src/server/logger.test.ts` (AC-10) | unit |
 | T-13 | Este cambio: imagen no root y sin secretos (job `container`, Trivy); red y RDS con Checkov en release | CI + IaC scan |
 | T-14 | Este cambio: gitleaks en pre-commit y CI (`sdlc-evidence/secrets.sarif`); `config.test.ts` (AC-5) | security + unit |
-| T-15 | Este cambio: SCA (osv-scanner SARIF), Trivy de imagen, SBOM CycloneDX; `sdlc evidence check` | security |
+| T-15 | Este cambio: SCA con Trivy fs (SARIF), Trivy de imagen, SBOM CycloneDX con syft; `sdlc evidence check` | security |
 | T-16 | Este cambio: actionlint y zizmor en CI sobre `.github/workflows/`; acciones fijadas por SHA | static |
 | T-17 | Este cambio: `sdlc check --base origin/main` (sensor `weakened_tests`) en CI | harness gate |
 | T-18 | Feature del panel: test de `AuditEvent` al cancelar por personal | integration (feature) |
@@ -93,3 +93,5 @@ test antes o junto al comportamiento. Paralelizables: 3 con 4; 7 con 8 y 9 (tras
 | 2026-09-17 | Tarea 15: los comandos del README se verificaron en el repositorio actual, no en un clon limpio | El clon limpio se verifica en CI (`pnpm install --frozen-lockfile` + build + tests) al abrir el PR |
 | 2026-09-17 | Tras el primer CI: `pnpm-workspace.yaml` fuerza versiones corregidas de `lodash`, `mysql2` y `deepmerge-ts` (transitivas del CLI de Prisma); la imagen final quita npm, corepack y aplica parches del sistema; el test del worker vacía la cola y usa un límite de 30 s | Trivy reportó 3 CVE altas en dependencias y 6 en la imagen; el test dependía de una cola sin backlog y del límite de 5 s de Vitest |
 | 2026-09-17 | Tareas 16 y 17: el repositorio pasó a público porque la protección de ramas exige GitHub Pro en privado; la protección no aplica a administradores por ahora | Decisión de huanrasan tras verificar que el historial no tiene secretos; el mantenedor único quedaría bloqueado hasta resolver el flujo de aprobación |
+| 2026-09-17 | Tras la revisión independiente (review.md): el proxy deja de excluir peticiones con cabecera de prefetch; se elimina `loading.tsx` de la raíz para que los errores devuelvan 5xx y los 404 devuelvan 404; la ruta de prueba pasa a `page.e2e.tsx`, incluida solo con `E2E_ROUTES=1`; `/api/health` registra `health_degraded`; CI carga `.env.ci` dentro de cada step; se quitan cuatro componentes de UI sin uso; la imagen elimina también yarn; `prisma.config.ts` valida `MIGRATION_DATABASE_URL` | Hallazgos high y medium del revisor: headers evitables por cabecera, estados HTTP incorrectos, ruta de prueba en la imagen de producción, inyección de variables en CI, 503 sin log y código muerto |
+| 2026-09-17 | Los componentes `Input`, `Label`, `Alert` y `FormMessage` que preveía la tarea 9 llegan con la primera feature que los use | Estaban sin importar en ningún sitio: código muerto que igualmente entraba en la imagen |

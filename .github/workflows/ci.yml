@@ -1,0 +1,116 @@
+name: ci
+
+# Build y tests del stack (AC-1, AC-2, AC-8, AC-9). Los escáneres de secretos, SAST, dependencias y SBOM, y la
+# política de evidencia, corren en sdlc-gates.yml.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Acciones fijadas por SHA (threat-model T-16); Dependabot las mantiene al día.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Architecture rules
+        run: python3 .harness/sdlc.pyz arch
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Test environment (non-secret values)
+        run: grep -Ev '^(#|$)' .env.ci >> "$GITHUB_ENV"
+      - name: PostgreSQL and Mailpit
+        run: docker compose up -d --wait db mail
+      - name: Migrations apply and are idempotent (AC-2)
+        run: |
+          pnpm db:migrate
+          pnpm db:migrate
+          pnpm db:status
+      - run: pnpm test:integration
+      - name: Build (AC-1)
+        run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: PostgreSQL and Mailpit
+        run: docker compose up -d --wait db mail
+      - name: Build image
+        run: docker build -t booking:ci .
+      - name: Migrate, run web as non-root and check health (AC-8)
+        run: |
+          docker run --rm --network host --read-only --tmpfs /tmp --env-file .env.ci booking:ci \
+            node node_modules/prisma/build/index.js migrate deploy
+          docker run -d --name web --network host --read-only --tmpfs /tmp --env-file .env.ci booking:ci
+          for _ in $(seq 1 30); do curl -fsS http://localhost:3000/api/health && break; sleep 1; done
+          curl -fsS http://localhost:3000/api/health
+          test "$(docker exec web id -u)" != "0"
+      - name: Image vulnerabilities (Trivy, fail on high)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 booking:ci
+      - name: Web logs
+        if: always()
+        run: docker logs web || true
+
+  workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: actionlint
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+      - name: zizmor (threat-model T-16)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 \
+            --offline .github/workflows

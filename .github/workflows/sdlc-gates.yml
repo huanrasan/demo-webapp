@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -53,31 +54,33 @@ jobs:
   sensors:
     # Scanners only produce evidence (SARIF / CycloneDX); `sdlc evidence check` applies the policy from
     # harness.toml and .harness/exceptions.toml. Pin images by digest and mirror them for private or air-gapped CI.
+    # Imágenes fijadas por digest el 2026-09-17 (threat-model T-15); Dependabot (ecosistema docker) no las actualiza en workflows: revisar en cada iteración.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Secrets (gitleaks)
         run: |
           mkdir -p sdlc-evidence
-          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git /repo --redact --exit-code 0 \
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git /repo --redact --exit-code 0 \
             --report-format sarif --report-path /repo/sdlc-evidence/secrets.sarif
       - name: SAST (Semgrep)
         # p/default downloads rules from the Semgrep registry; for offline CI use --config path/to/rules/.
         run: |
-          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:latest \
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep@sha256:34ab619bf1391a24bfda3f05debd0d8a6ce3093c2d5f9d39cfc00f83c1397823 \
             semgrep scan --config p/default --metrics off --sarif --output sdlc-evidence/sast.sarif
       - name: Dependencies (Trivy)
         run: |
-          docker run --rm -v "$PWD:/src" -w /src aquasec/trivy:latest \
+          docker run --rm -v "$PWD:/src" -w /src aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
             fs --scanners vuln --format sarif --output sdlc-evidence/sca.sarif .
       - name: SBOM (Syft, CycloneDX)
         run: |
-          docker run --rm -v "$PWD:/src" -w /src anchore/syft:latest \
+          docker run --rm -v "$PWD:/src" -w /src anchore/syft@sha256:95fe0835e5bebc6f8b1f8acef68d47d63d594ef4c0f25c097ff853b23cbac74c \
             dir:. --exclude ./sdlc-evidence -o cyclonedx-json=sdlc-evidence/sbom.json
       - name: IaC (Checkov)
         if: hashFiles('**/*.tf', '**/Chart.yaml', '**/*.bicep', '**/cloudformation/**', '**/k8s/**') != ''

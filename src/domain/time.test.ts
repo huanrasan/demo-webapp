@@ -32,6 +32,10 @@ describe("zona horaria del negocio", () => {
     expect(plain(formatInBusinessZone(winter, "America/Santiago"))).toContain("10:00 a. m.");
   });
 
+  it("PRUEBA DE CI: este test debe fallar y bloquear el PR", () => {
+    expect(formatInBusinessZone(new Date("2026-11-03T20:30:00Z"), "America/Bogota")).toBe("valor incorrecto a propósito");
+  });
+
   it("valida identificadores IANA", () => {
     expect(isValidTimeZone("America/Bogota")).toBe(true);
     expect(isValidTimeZone("Mars/Olympus")).toBe(false);

@@ -1,8 +1,11 @@
+import { connection } from "next/server";
 import { Button } from "@/components/ui/button";
 import { loadConfig } from "@/server/config";
 import { es } from "./_content/es";
 
-export default function Home() {
+export default async function Home() {
+  // Next.js renderiza la página en paralelo al layout: también debe esperar a la petición antes de leer la configuración.
+  await connection();
   const { BUSINESS_NAME } = loadConfig();
 
   return (

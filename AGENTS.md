@@ -7,15 +7,22 @@ This file is a map, not a manual. Load the linked skill or document only when th
 
 Booking web app for small appointment-based businesses (clinics, studios, gyms): customers register, see availability,
 book and cancel appointments and receive email reminders; staff manage schedules and bookings from an admin panel.
-Stack: Next.js (App Router, TypeScript), PostgreSQL with Prisma, Auth.js, Vitest, Playwright. Target: any container
-platform or public/private cloud; local development with Docker Compose for PostgreSQL.
+One business per installation (single-tenant), Spanish only, Colombia (Ley 1581). Humans: see `README.md`.
 
-The application is not scaffolded yet: the first change record creates it. Update these commands in that change.
+Stack: Next.js 16 (App Router, TypeScript), PostgreSQL 17 with Prisma 7, Better Auth (ADR-0002, replaces Auth.js),
+pg-boss for scheduled jobs, Amazon SES behind an `EmailSender` interface, Vitest, Playwright. Runs on any container
+platform; production topology is AWS ECS on Fargate (ADR-0005). Node 24 and pnpm; local database and mail with
+Docker Compose. Copy `.env.example` to `.env`; the app refuses to start with invalid configuration.
 
-- Build: `pnpm build`
-- Test: `pnpm test` (unit, Vitest) and `pnpm test:e2e` (Playwright)
-- Lint/format: `pnpm lint && pnpm format:check`
-- Run locally: `docker compose up -d db && pnpm dev`
+Layers (ADR-0001, enforced by `sdlc arch`): `src/domain` (pure rules) <- `src/server` (use cases and adapters) <-
+`src/app` + `src/components` (UI, routes) and `src/worker` (jobs).
+
+- Build: `pnpm build` (Next.js + `dist/worker.mjs`)
+- Test: `pnpm test` (unit), `pnpm test:integration` and `pnpm test:e2e` (both need `docker compose up -d db mail`)
+- Lint/format/types: `pnpm lint && pnpm format:check && pnpm typecheck`
+- Run locally: `docker compose up -d db mail && pnpm db:migrate && pnpm dev` (jobs: `pnpm worker`)
+- Migrations: `pnpm db:dev` (create), `pnpm db:migrate` (apply), `pnpm db:status`; they use `MIGRATION_DATABASE_URL`
+  (user `migrator`, DDL), the app uses `DATABASE_URL` (user `app`, DML)
 
 ## How work flows here (SDLC harness)
 

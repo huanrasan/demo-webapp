@@ -18,14 +18,7 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
+// Sin exclusiones por cabecera: el cliente las elige y podría saltarse los headers de seguridad.
 export const config = {
-  matcher: [
-    {
-      source: "/((?!_next/static|_next/image|favicon.ico).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

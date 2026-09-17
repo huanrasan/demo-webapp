@@ -49,20 +49,27 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Test environment (non-secret values)
-        run: grep -Ev '^(#|$)' .env.ci >> "$GITHUB_ENV"
       - name: PostgreSQL and Mailpit
         run: docker compose up -d --wait db mail
+      # .env.ci se carga dentro de cada step (nunca en $GITHUB_ENV): un PR no debe poder inyectar
+      # variables en el entorno del job editando ese archivo.
       - name: Migrations apply and are idempotent (AC-2)
         run: |
+          set -a; . ./.env.ci; set +a
           pnpm db:migrate
           pnpm db:migrate
           pnpm db:status
-      - run: pnpm test:integration
+      - name: Integration tests
+        run: |
+          set -a; . ./.env.ci; set +a
+          pnpm test:integration
       - name: Build (AC-1)
         run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - name: End-to-end tests
+        run: |
+          set -a; . ./.env.ci; set +a
+          pnpm test:e2e
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:

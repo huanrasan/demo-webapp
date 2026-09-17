@@ -22,10 +22,12 @@ RUN pnpm prune --prod
 FROM ${NODE_IMAGE} AS runner
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
 WORKDIR /app
-# Parches del sistema base y menos superficie: la imagen final ejecuta node directamente, npm y corepack solo
-# aportan dependencias vulnerables (threat-model T-15).
+# Parches del sistema base y menos superficie: la imagen final ejecuta node directamente; npm, corepack y yarn solo
+# aportan dependencias vulnerables (threat-model T-15). apt-get upgrade sacrifica reproducibilidad bit a bit frente
+# al digest fijado, a cambio de no esperar a que la imagen base publique los parches del sistema.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm \
+    /usr/local/bin/npx /usr/local/bin/corepack /opt/yarn-v* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 COPY --from=prod-deps --chown=root:root /app/node_modules ./node_modules
 COPY --from=build --chown=root:root /app/package.json /app/next.config.ts /app/prisma.config.ts ./
 COPY --from=build --chown=root:root /app/prisma ./prisma

@@ -21,7 +21,7 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
       typeof error === "object" && error !== null && "digest" in error
         ? String(error.digest)
         : undefined,
-    request: { method: request.method, url: request.path, headers },
+    request: { method: request.method, url: request.path },
     error,
   });
 };

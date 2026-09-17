@@ -22,7 +22,7 @@ status: proposed
 |---|---|---|
 | `src/domain` | Reglas puras: zona horaria y formato de instantes, validación de configuración; en features, disponibilidad, solapamientos, políticas de cancelación | TypeScript sin dependencias de framework |
 | `src/server` | Configuración validada (`config.ts`), cliente Prisma, logger, `EmailSender`, cliente de cola, autenticación y guards (`requireUser`, `requireStaff`), casos de uso | Prisma 7 + `@prisma/adapter-pg`, pino, pg-boss, Better Auth, AWS SDK v3 SESv2, Nodemailer (SMTP local) |
-| `src/app` | Rutas App Router: inicio, 404, error, carga, `GET /api/health`; en features, cliente `(customer)` y panel `(staff)` | Next.js 16, React, shadcn/ui, Tailwind CSS 4 |
+| `src/app` | Rutas App Router: inicio, 404, error, `GET /api/health`; en features, cliente `(customer)` y panel `(staff)` | Next.js 16, React, shadcn/ui, Tailwind CSS 4 |
 | `src/proxy.ts` | Nonce y headers de seguridad (CSP, HSTS en producción, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors`), `requestId` | Next.js proxy |
 | `src/worker` | Proceso de tareas: registro de handlers pg-boss, apagado ordenado | Node.js 24 |
 | `prisma/` | Esquema y migraciones | Prisma Migrate |
@@ -37,7 +37,8 @@ Flujo de arranque de `web`: `config.ts` valida variables con zod → si falla, s
 Variables de entorno (todas validadas; `.env.example` sin valores):
 `DATABASE_URL`, `BETTER_AUTH_SECRET` (≥ 32 bytes), `BETTER_AUTH_URL`, `BUSINESS_NAME`, `BUSINESS_TIMEZONE` (IANA),
 `BRAND_PRIMARY_COLOR` (hex, contraste ≥ 4,5:1), `EMAIL_TRANSPORT` (`ses` | `smtp`), `EMAIL_FROM`, `SMTP_URL` (si
-`smtp`), `AWS_REGION` (si `ses`), `LOG_LEVEL`, `NODE_ENV`.
+`smtp`), `AWS_REGION` (si `ses`), `LOG_LEVEL`, `NODE_ENV`. `MIGRATION_DATABASE_URL` (usuario `migrator`) la usan solo
+los comandos de migración y se valida en `prisma.config.ts`, no en el arranque de la app.
 
 Scripts de `package.json` (actualizan `AGENTS.md` en este cambio): `dev`, `build`, `start`, `worker`, `lint`,
 `format`, `format:check`, `typecheck`, `test` (Vitest unit), `test:integration` (Vitest + PostgreSQL real),
@@ -66,7 +67,7 @@ conceptuales definidas para que las features las hereden. `Booking` = restricted
 - **CI (GitHub Actions, en cada PR):** `pnpm install --frozen-lockfile` → `lint`, `format:check`, `typecheck` →
   `test` → servicio PostgreSQL 17: `db:migrate` + `test:integration` → `build` → `test:e2e` (Playwright contra
   `pnpm start` con Mailpit) → build de imagen → arranque de contenedor + `curl /api/health` + verificación de usuario no
-  root (AC-8) → escaneos (gitleaks SARIF, Semgrep SARIF, `pnpm audit`/osv-scanner SARIF, Trivy de imagen, SBOM
+  root (AC-8) → escaneos (gitleaks SARIF, Semgrep SARIF, Trivy fs SARIF para dependencias, Trivy de imagen, SBOM
   CycloneDX con syft) → `sdlc check --base` y `sdlc evidence check`. Los jobs existentes `sdlc-gates` se mantienen.
 - **Producción (fase release):** topología de ADR-0005 y diagrama `00-deployment`. IaC OpenTofu en `infra/` con
   módulos `network`, `database`, `service`, `email`, `observability`, `budget`, escrito en release. Portabilidad:
@@ -118,6 +119,16 @@ Numeración compartida con `docs/diagrams/00-deployment.drawio` y con `threat-mo
   RDS almacenamiento libre < 20 %; `queue.heartbeat.age` > 5 min; SES tasa de rebote > 5 %. Destino: SNS → email del
   responsable.
 - **Trazas:** no en el piloto (costo y complejidad); `requestId` correlaciona logs de `web`. Revisar si el p95 lo exige.
+
+### Rutas de prueba
+`src/app/e2e/error/page.e2e.tsx` existe solo para probar la pantalla de error. `next.config.ts` añade la extensión
+`e2e.tsx` a `pageExtensions` únicamente con `E2E_ROUTES=1` (`pnpm build:e2e`), así que la imagen de producción,
+construida con `pnpm build`, no la contiene ni la enruta.
+
+### Estados de carga
+Sin `loading.tsx` en la raíz: un límite de Suspense en la raíz emite el shell HTTP antes de renderizar y fuerza 200 en
+errores y 404, lo que inutilizaría la alarma de 5xx del ALB. Los estados de carga se añaden por segmento en las
+features que los necesiten.
 
 ## Rollout and rollback
 - **Este cambio:** sin usuarios; se integra a `main` tras review. El primer despliegue a AWS ocurre en la fase release

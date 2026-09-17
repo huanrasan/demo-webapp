@@ -43,7 +43,10 @@ test.describe("accesibilidad", () => {
   });
 
   test("error del servidor sin detalles técnicos y con código de referencia", async ({ page }) => {
-    await page.goto("/e2e/error");
+    const response = await page.goto("/e2e/error");
+
+    // El error del servidor debe llegar como 5xx: la alarma de 5xx del ALB depende de ello.
+    expect(response?.status()).toBe(500);
 
     await expect(page.getByRole("heading", { name: "Algo salió mal" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Intentar de nuevo" })).toBeVisible();

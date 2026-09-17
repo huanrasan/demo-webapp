@@ -21,6 +21,5 @@ export default defineConfig({
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { ENABLE_E2E_ROUTES: "true" },
   },
 });

@@ -1,6 +1,6 @@
 # SDLC harness configuration. Docs: https://github.com/<owner>/sdlc-harness
 [harness]
-version = "0.5.2"
+version = "0.7.0"
 # lite | standard | regulated  (see .harness/profiles/)
 profile = "standard"
 agents_md_max_lines = 150
@@ -44,3 +44,18 @@ dir = "sdlc-evidence"
 fail_on = "high"
 # SPDX identifiers denied in dependencies (checked in SBOM license data).
 license_deny = ["AGPL-1.0-only", "AGPL-1.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "SSPL-1.0", "BUSL-1.1"]
+
+# Added by sdlc upgrade 0.7.0
+
+[release]
+# `.github/workflows/sdlc-release.yml` runs `scripts/build-release` (executable, no arguments) and expects it to
+# leave every published artifact in dist/. Everything after that - SBOM, provenance, signatures, the GitHub
+# release - operates on dist/.
+# sbom_source is what Syft scans. `dir:dist` inventories files; use the form that matches the real artifact, or
+# the SBOM will describe the directory instead of what you ship:
+#   docker-archive:dist/app.tar   OCI image saved with `docker save`
+#   oci-archive:dist/app.oci      OCI layout tarball
+#   file:dist/app.jar             a single binary, jar or wheel
+# scripts/build-release exporta las dos imágenes OCI con la versión en el nombre; el workflow
+# sustituye VERSION por la del tag.
+sbom_source = "docker-archive:dist/booking-VERSION-runner.oci.tar"

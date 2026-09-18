@@ -33,6 +33,8 @@ jobs:
       - name: Gates on the tagged commit
         run: python3 .harness/sdlc.pyz check
       - name: Build
+        # Contract: scripts/build-release is executable, takes no arguments, and leaves everything that will be
+        # published in dist/. Documented in harness.toml [release] and the sdlc-release skill.
         run: |
           if [ ! -x scripts/build-release ]; then
             echo "Create an executable scripts/build-release that writes release artifacts to dist/"; exit 1
@@ -40,13 +42,16 @@ jobs:
           scripts/build-release
           test -n "$(ls -A dist)"
       - name: SBOM (CycloneDX) and license policy
+        # The source comes from harness.toml [release] sbom_source: scanning dist/ as a directory when the artifact
+        # is an OCI archive produces an SBOM of the tarball, not of the image.
         run: |
           mkdir -p sdlc-evidence
-          # El artefacto es una imagen OCI: se inventaría el archivo de la imagen de ejecución, no el directorio.
-          archive=$(basename "$(ls dist/*-runner.oci.tar)")
-          docker run --rm -v "$PWD:/src" -w /src \
-            anchore/syft@sha256:95fe0835e5bebc6f8b1f8acef68d47d63d594ef4c0f25c097ff853b23cbac74c \
-            "docker-archive:dist/$archive" -o cyclonedx-json=sdlc-evidence/sbom.json
+          # harness.toml [release] sbom_source define el esquema; el nombre del archivo lleva la
+          # versión del tag, que se sustituye aquí.
+          SBOM_SOURCE="$(python3 .harness/sdlc.pyz config release.sbom_source --default dir:dist)"
+          SBOM_SOURCE="${SBOM_SOURCE//VERSION/${GITHUB_REF_NAME#v}}"
+          echo "SBOM source: $SBOM_SOURCE"
+          docker run --rm -v "$PWD:/src" -w /src anchore/syft:v1.52.0@sha256:500e2d872ac019436926e8322b4fc1f39441d94d21f6f4046c6ff29b30e8cb02 "$SBOM_SOURCE" -o cyclonedx-json=sdlc-evidence/sbom.json
           python3 .harness/sdlc.pyz evidence check --require sbom
           cp sdlc-evidence/sbom.json dist/sbom.cdx.json
       - name: Build provenance attestation (SLSA)

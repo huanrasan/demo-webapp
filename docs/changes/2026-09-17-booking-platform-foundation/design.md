@@ -26,7 +26,7 @@ status: proposed
 | `src/proxy.ts` | Nonce y headers de seguridad (CSP, HSTS en producción, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors`), `requestId` | Next.js proxy |
 | `src/worker` | Proceso de tareas: registro de handlers pg-boss, apagado ordenado | Node.js 24 |
 | `prisma/` | Esquema y migraciones | Prisma Migrate |
-| `Dockerfile` | Imagen única multi-etapa, `standalone`, usuario no root; comandos `web` (por defecto), `worker`, `migrate` | `node:24-slim` fijado por digest |
+| `Dockerfile` | Dos imágenes multi-etapa con base endurecida común y usuario no root: `runner` (web por defecto, worker con `node dist/worker.mjs`) y `migrator` (aplica migraciones). El CLI de Prisma queda fuera de `runner` | `node:24-slim` fijado por digest |
 | `docker-compose.yml` | Desarrollo local: `db` (postgres:17), `mail` (Mailpit) | Docker Compose |
 | `.github/workflows/ci.yml` | Lint, formato, typecheck, unit, integración, e2e, migraciones, build de imagen, escaneos | GitHub Actions |
 
@@ -69,9 +69,13 @@ conceptuales definidas para que las features las hereden. `Booking` = restricted
   `pnpm start` con Mailpit) → build de imagen → arranque de contenedor + `curl /api/health` + verificación de usuario no
   root (AC-8) → escaneos (gitleaks SARIF, Semgrep SARIF, Trivy fs SARIF para dependencias, Trivy de imagen, SBOM
   CycloneDX con syft) → `sdlc check --base` y `sdlc evidence check`. Los jobs existentes `sdlc-gates` se mantienen.
-- **Producción (fase release):** topología de ADR-0005 y diagrama `00-deployment`. IaC OpenTofu en `infra/` con
-  módulos `network`, `database`, `service`, `email`, `observability`, `budget`, escrito en release. Portabilidad:
-  la app solo depende de PostgreSQL, SMTP/SES vía interfaz y variables de entorno; la IaC es específica de AWS.
+- **Producción:** topología de ADR-0005 y diagrama `00-deployment`. La IaC OpenTofu (`network`, `database`,
+  `service`, `email`, `observability`, `budget`) se escribe en un registro de cambio propio, no en este: aquí solo se
+  publican los artefactos. Portabilidad: la app solo depende de PostgreSQL, SMTP/SES vía interfaz y variables de
+  entorno; la IaC es específica de AWS.
+- **Artefactos de release:** `scripts/build-release` construye ambas imágenes y las exporta a `dist/` como archivos
+  OCI; el workflow `sdlc-release.yml` genera el SBOM CycloneDX del archivo de `runner`, atesta procedencia y SBOM, y
+  firma los artefactos con Sigstore sin claves.
 - **Entornos:** `local`, `ci`, `staging` (efímero, `cost.md`), `production`. Sin datos de producción fuera de producción.
 
 ### Flujos de despliegue

@@ -42,7 +42,11 @@ jobs:
       - name: SBOM (CycloneDX) and license policy
         run: |
           mkdir -p sdlc-evidence
-          docker run --rm -v "$PWD:/src" -w /src anchore/syft:latest dir:dist -o cyclonedx-json=sdlc-evidence/sbom.json
+          # El artefacto es una imagen OCI: se inventaría el archivo de la imagen de ejecución, no el directorio.
+          archive=$(basename "$(ls dist/*-runner.oci.tar)")
+          docker run --rm -v "$PWD:/src" -w /src \
+            anchore/syft@sha256:95fe0835e5bebc6f8b1f8acef68d47d63d594ef4c0f25c097ff853b23cbac74c \
+            "docker-archive:dist/$archive" -o cyclonedx-json=sdlc-evidence/sbom.json
           python3 .harness/sdlc.pyz evidence check --require sbom
           cp sdlc-evidence/sbom.json dist/sbom.cdx.json
       - name: Build provenance attestation (SLSA)

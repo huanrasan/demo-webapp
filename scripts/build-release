@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Construye los artefactos de release: las dos imágenes de contenedor (ADR-0005), exportadas a dist/.
+# La usa .github/workflows/sdlc-release.yml, que firma y atesta todo lo que quede en dist/.
+set -euo pipefail
+
+version="${1:-${GITHUB_REF_NAME:-}}"
+version="${version#v}"
+if [ -z "$version" ]; then
+  echo "Uso: scripts/build-release <version> (o ejecutar desde un tag vX.Y.Z)" >&2
+  exit 1
+fi
+
+rm -rf dist
+mkdir -p dist
+metadata="dist/booking-${version}.metadata.txt"
+: > "$metadata"
+
+for target in runner migrator; do
+  image="booking:${version}-${target}"
+  archive="dist/booking-${version}-${target}.oci.tar"
+
+  docker build --target "$target" -t "$image" .
+  docker save -o "$archive" "$image"
+
+  {
+    echo "[$target]"
+    echo "image=$image"
+    echo "image_id=$(docker image inspect "$image" --format '{{.Id}}')"
+    echo "archive=$(basename "$archive")"
+    echo "archive_sha256=$(sha256sum "$archive" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$archive" | cut -d' ' -f1)"
+    echo
+  } >> "$metadata"
+done
+
+echo "Artefactos en dist/:"
+ls -l dist

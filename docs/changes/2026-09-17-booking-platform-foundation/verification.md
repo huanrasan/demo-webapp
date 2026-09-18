@@ -109,6 +109,20 @@ Veredicto `ready-for-human-approval`. Balance: 23 hallazgos en cuatro pasadas, 2
 revisor, 2 abiertos como riesgo aceptado por el product owner. Se corrigió además una observación `info` sobre
 `ux.md` (citaba un `footer` y componentes ya eliminados) que el revisor había dejado fuera del veredicto.
 
+## Publicación de la release 0.1.0 (2026-09-18)
+Tag `v0.1.0`, run 35350503246 de `sdlc-release.yml`, aprobado en el entorno protegido `production` (revisor
+obligatorio: huanrasan; el entorno solo admite tags `v*`). Resultado: `success`.
+
+| Artefacto | SHA-256 | Atestaciones |
+|---|---|---|
+| `booking-0.1.0-runner.oci.tar` (797 MB, imagen `booking:0.1.0-runner`) | `6f9fad3da7a126baf5d7708fcece331603b106810474028f8c6508b907bd6ab5` | 2 (procedencia SLSA y SBOM) |
+| `booking-0.1.0-migrator.oci.tar` (1.051 MB, imagen `booking:0.1.0-migrator`) | `a83963119894d9939e993f0b5207e4488290b9298fdd248fe1bda677b90e888f` | 2 (procedencia SLSA y SBOM) |
+
+SBOM publicado: `sbom.cdx.json`, CycloneDX 1.7 con 4.045 componentes. Cada artefacto lleva su firma keyless de
+Sigstore (`<archivo>.sigstore.json`). Los identificadores de imagen y los SHA-256 están en
+`booking-0.1.0.metadata.txt`, también firmado. `release.md` conserva los comandos de verificación; no se editó para
+añadir estos valores porque hacerlo invalidaría su recibo de aprobación por un dato que ya está firmado en la release.
+
 ## Findings disposition
 | Finding | Disposition (fixed / accepted / false positive) | Rationale | Who |
 |---|---|---|---|

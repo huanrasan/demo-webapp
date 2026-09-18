@@ -1,7 +1,7 @@
 id = "2026-09-17-booking-platform-foundation"
 type = "architecture"
 risk = "high"
-phase = "review"
+phase = "done"
 scopes = ["ui", "data", "personal-data", "infra"]
 ai_assisted = true
 adrs = [

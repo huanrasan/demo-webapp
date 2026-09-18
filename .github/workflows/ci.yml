@@ -91,12 +91,13 @@ jobs:
           persist-credentials: false
       - name: PostgreSQL and Mailpit
         run: docker compose up -d --wait db mail
-      - name: Build image
-        run: docker build -t booking:ci .
+      - name: Build images
+        run: |
+          docker build --target runner -t booking:ci .
+          docker build --target migrator -t booking:ci-migrator .
       - name: Migrate, run web as non-root and check health (AC-8)
         run: |
-          docker run --rm --network host --read-only --tmpfs /tmp --env-file .env.ci booking:ci \
-            node node_modules/prisma/build/index.js migrate deploy
+          docker run --rm --network host --read-only --tmpfs /tmp --env-file .env.ci booking:ci-migrator
           docker run -d --name web --network host --read-only --tmpfs /tmp --env-file .env.ci booking:ci
           for _ in $(seq 1 30); do curl -fsS http://localhost:3000/api/health && break; sleep 1; done
           curl -fsS http://localhost:3000/api/health
@@ -115,6 +116,9 @@ jobs:
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
             image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 booking:ci
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 booking:ci-migrator
       - name: Web logs
         if: always()
         run: docker logs web || true

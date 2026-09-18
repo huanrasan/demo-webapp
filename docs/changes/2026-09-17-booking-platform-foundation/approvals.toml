@@ -65,7 +65,14 @@ approved_at = "2026-09-17T13:53:29+00:00"
 
 [[approval]]
 artifact = "docs/changes/2026-09-17-booking-platform-foundation/design.md"
-sha256 = "c04b5bc30bb6482d2f641451c12a6171b193755441d1e2bc3a65073fb1af13ff"
+sha256 = "7abf85b67d67fcb6cc64b7416882a431caa9d4ac449d9ba8069a0d7d24d35413"
 role = "architect"
 approver = "huanrasan"
-approved_at = "2026-09-17T21:56:09+00:00"
+approved_at = "2026-09-18T12:31:14+00:00"
+
+[[approval]]
+artifact = "docs/changes/2026-09-17-booking-platform-foundation/release.md"
+sha256 = "e0d28d0e614595397a067c89db9caec31069e1ea9f10cc1438a52a05009a9984"
+role = "release-manager"
+approver = "huanrasan"
+approved_at = "2026-09-18T12:32:36+00:00"

@@ -109,6 +109,20 @@ Veredicto `ready-for-human-approval`. Balance: 23 hallazgos en cuatro pasadas, 2
 revisor, 2 abiertos como riesgo aceptado por el product owner. Se corrigió además una observación `info` sobre
 `ux.md` (citaba un `footer` y componentes ya eliminados) que el revisor había dejado fuera del veredicto.
 
+## Publicación de la release 0.1.0 (2026-09-18)
+Tag `v0.1.0`, run 35350503246 de `sdlc-release.yml`, aprobado en el entorno protegido `production` (revisor
+obligatorio: huanrasan; el entorno solo admite tags `v*`). Resultado: `success`.
+
+| Artefacto | SHA-256 | Atestaciones |
+|---|---|---|
+| `booking-0.1.0-runner.oci.tar` (797 MB, imagen `booking:0.1.0-runner`) | `6f9fad3da7a126baf5d7708fcece331603b106810474028f8c6508b907bd6ab5` | 2 (procedencia SLSA y SBOM) |
+| `booking-0.1.0-migrator.oci.tar` (1.051 MB, imagen `booking:0.1.0-migrator`) | `a83963119894d9939e993f0b5207e4488290b9298fdd248fe1bda677b90e888f` | 2 (procedencia SLSA y SBOM) |
+
+SBOM publicado: `sbom.cdx.json`, CycloneDX 1.7 con 4.045 componentes. Cada artefacto lleva su firma keyless de
+Sigstore (`<archivo>.sigstore.json`). Los identificadores de imagen y los SHA-256 están en
+`booking-0.1.0.metadata.txt`, también firmado. `release.md` conserva los comandos de verificación; no se editó para
+añadir estos valores porque hacerlo invalidaría su recibo de aprobación por un dato que ya está firmado en la release.
+
 ## Findings disposition
 | Finding | Disposition (fixed / accepted / false positive) | Rationale | Who |
 |---|---|---|---|
@@ -118,7 +132,7 @@ revisor, 2 abiertos como riesgo aceptado por el product owner. Se corrigió adem
 | Revisión automática: "los overrides de lodash apuntan a una versión inexistente (máximo 4.17.21)" | false positive | lodash 4.18.1 existe, publicada por jdalton desde lodash/lodash el 2026-04-01; el aviso CVE-2026-4800 indica 4.18.0 como versión corregida | agente |
 | Job dependencies de sdlc-gates: "Dependency review is not supported on this repository" | fixed | Requiere GitHub Advanced Security en repositorios privados; el job se limita a repositorios públicos y la cobertura la dan Trivy y el SBOM | agente |
 | Test del worker intermitente en local | fixed | Un worker huérfano consumía los trabajos y el cron acumulaba pendientes; el test vacía la cola y usa un límite de 30 s (3 ejecuciones seguidas en verde) | agente |
-| Imagen de contenedor de 1,02 GB | accepted | No afecta a la seguridad ni a los criterios de aceptación; reducirla queda como seguimiento antes del release | tech-lead |
+| Imagen de contenedor de 1,02 GB | fixed | Separada en `runner` (819 MB, sin CLI de Prisma) y `migrator` (efímera, solo en despliegues). Ambas escaneadas sin hallazgos altos y probadas: `/api/health` 200, worker con apagado ordenado y `migrate deploy` idempotente |
 | Job harness: faltan las aprobaciones del PR en GitHub | accepted (pendiente de acción humana) | Los recibos locales existen; GitHub no permite que el autor apruebe su propio PR. Requiere otra cuenta revisora o abrir el PR con otra identidad | huanrasan |
 | Job harness: faltan las aprobaciones del PR en GitHub | accepted (desviación consciente) | GitHub no permite que el autor apruebe su propio PR y el repositorio tiene un único mantenedor. La GitHub App instalada el 2026-09-18 habilita `@claude` en comentarios, pero no abre PR en nombre de un bot, así que no resuelve el caso. Decisión de huanrasan el 2026-09-18: mergear como administrador con `harness` en rojo, con los recibos locales de `sdlc approve` como única prueba de aprobación. Pendiente: invitar a un segundo revisor y activar `enforce_admins` para que esto no se repita | huanrasan |
 | Protección de ramas no disponible en repositorio privado (HTTP 403, requiere GitHub Pro) | fixed | El repositorio pasó a público el 2026-09-17 por decisión de huanrasan, tras verificar el historial completo con gitleaks (sin secretos; solo correos de ejemplo y alias noreply) | huanrasan |

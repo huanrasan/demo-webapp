@@ -12,7 +12,9 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
-      - db-data:/var/lib/postgresql/data
+      # La imagen 18+ guarda los datos en un subdirectorio por versión mayor: el montaje va a
+      # /var/lib/postgresql, no a /var/lib/postgresql/data, o el contenedor se niega a arrancar.
+      - db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d booking"]
       interval: 2s

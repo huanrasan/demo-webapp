@@ -9,4 +9,10 @@ review_by: 2027-03-16
 status: active
 superseded_by:
 ---
-La línea 'Total monthly (production):' debe tener un dígito pegado al primer token, por ejemplo '77,40 USD'; 'USD 77,40' o '**≈ USD 77,40**' fallan. Ninguna línea de la sección Guardrails puede terminar en ':' y la sección debe mencionar 'budget'.
+Con el arnés 0.5.2 la línea 'Total monthly (production):' exigía un dígito pegado al primer token ('77,40 USD'
+pasaba; 'USD 77,40' fallaba) y ninguna línea de Guardrails podía terminar en ':'. **El arnés 0.7.0 relajó ambas
+cosas**: el importe admite la moneda antes o después, y Guardrails se juzga por contenido, no por puntuación.
+
+Lo que sigue exigiendo el gate: un importe numérico en 'Total monthly (production):', al menos un componente con
+coste mensual numérico, la sección 'Assumptions', y que Guardrails cubra los cuatro temas: presupuesto mensual,
+umbrales de alerta, etiquetas de asignación de coste y qué se apaga o se escala a cero cuando está ocioso.
